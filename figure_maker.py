@@ -3,10 +3,8 @@ import matplotlib.pyplot as plt
 import cv2 as cv
 import matplotlib.pyplot as plt
 
-from scipy.optimize import linear_sum_assignment
-
 videofile = "29Sep23Data/10X_LD_1024_R1.avi"
-visualization = "coloring" # Options: optical_flow,bounding_boxes,coloring
+visualization = "coloring_movement" # Options: optical_flow,bounding_boxes,coloring
 
 cap = cv.VideoCapture(videofile)
 
@@ -44,8 +42,10 @@ num_labels, label_im, bboxs, centroid = cv.connectedComponentsWithStats(old_bw, 
 p0 = np.expand_dims(centroid,axis=1).astype(np.float32)
 #print(p0.shape)
 
+consistent_labels = np.arange(num_labels)
 
-def seeded_connected_components(thresh_im,centroids,prev_centroids=None):
+
+def seeded_connected_components(thresh_im,centroids,consistent_labels):
     """
     This function takes a thresholded image and a set of centroids and returns the connected components relative to those centroids
     """
@@ -58,17 +58,6 @@ def seeded_connected_components(thresh_im,centroids,prev_centroids=None):
     # Start with an empty image and bboxs list and add to them based on the centroids
     new_label_im = np.zeros_like(label_im) - 1
     new_bboxs = []
-
-    if prev_centroids is not None:
-        # Calculate cost matrix
-        cost_matrix = np.zeros((len(centroids), len(prev_centroids)))
-        for i, centroid in enumerate(centroids):
-            for j, prev_centroid in enumerate(prev_centroids):
-                cost_matrix[i, j] = np.linalg.norm(centroid - prev_centroid)
-
-        # Use Hungarian algorithm to find optimal assignment
-        row_ind, col_ind = linear_sum_assignment(cost_matrix)
-
     for i, centroid in enumerate(centroids):
         # Get the label of the centroid
 
@@ -84,14 +73,8 @@ def seeded_connected_components(thresh_im,centroids,prev_centroids=None):
         if bboxs[label,2] > label_im.shape[0]/2:
             continue
 
-        # Use number assigned by Hungarian algorithm
-        if prev_centroids is not None:
-            new_label_im[label_im==label] = col_ind[np.where(row_ind == i)][0]
-        else:
-            new_label_im[label_im==label] = i
-
         # Add the label to the new label image
-        new_label_im[label_im==label] = i #len(new_bboxs)
+        new_label_im[label_im==label] = i #consistent_labels[i] #len(new_bboxs)
         # Add the bbox to the new bboxs
         new_bboxs.append(bboxs[label])
 
@@ -120,13 +103,18 @@ jet_colors = plt.get_cmap('jet')
 # Create a mask image for drawing purposes
 mask = np.zeros_like(old_frame)
 
+count = 0
+imgs = []
 while(1):
+    count += 1
+
     ret, frame = cap.read()
     if not ret:
         print('No frames grabbed!')
         break
 
     frame_gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+    
 
     # calculate optical flow
     p1, st, err = cv.calcOpticalFlowPyrLK(old_gray, frame_gray, p0, None, **lk_params)
@@ -135,12 +123,15 @@ while(1):
     if p1 is not None:
         good_new = p1[st==1]
         good_old = p0[st==1]
+        consistent_labels = consistent_labels[(st==1)[:,0]]
 
+    #if p0.shape[0] != good_new.shape[0]:
+    #    print("Number of points changed!")
 
     # Find Seeded Connected Components
     _, frame_bw = cv.threshold(frame_gray,30,255,cv.THRESH_BINARY)
-    num_labels, label_im, bboxs = seeded_connected_components(frame_bw,good_new,good_old)
-    
+    num_labels, label_im, bboxs = seeded_connected_components(frame_bw,good_new,consistent_labels)
+
     if visualization == "optical_flow":
 
         # draw the tracks
@@ -177,27 +168,59 @@ while(1):
 
         distance = np.sum(np.square(good_new - good_old),axis=1)
         distance = np.sqrt(distance)
-        distance = np.clip(distance,0,1)
+        distance = np.clip(distance,0,1.0)
         #distance = (distance - np.amin(distance))/(np.amax(distance) - np.amin(distance))
 
-        # Draw the image label as random colors
+        #img = distance[label_im]
+        #black_mask = label_im!=-1
+        #img = black_mask[:,:,None]*img[:,:,None]
+        #print(img.shape)
+
+        # Draw the image label distance based colors
         mask = jet_colors(distance[label_im])[:,:,:3]
         mask = (255*mask).astype(np.uint8)
         black_mask = label_im!=-1
         mask *= black_mask[:,:,None]
         img = cv.add(frame, mask)
 
-    result_vid.write(img)
+    #result_vid.write(img)
 
-    cv.imshow('frame', img)
-    k = cv.waitKey(30) & 0xff
-    if k == 27:
-        break
+    if count % 10 == 0:
+        imgs.append(img)
+
+    #cv.imshow('frame', img)
+    #k = cv.waitKey(30) & 0xff
+    #if k == 27:
+    #    break
 
     # Now update the previous frame and previous points
     old_gray = frame_gray.copy()
     p0 = good_new.reshape(-1, 1, 2)
 
+    if count == 95:
+        break
+
 result_vid.release()
 
 cv.destroyAllWindows()
+
+import matplotlib.pyplot as plt
+fig, ax = plt.subplots(nrows=3, ncols=3)
+for i,img in enumerate(imgs):
+    #plt.subplot(3,3,i+1)
+    #plt.imshow(img)
+    #plt.axis("off")
+    ax.flat[i].imshow(img,cmap="jet")
+    ax.flat[i].axis("off")
+
+from matplotlib import cm
+jet = cm.jet
+fig.subplots_adjust(right=0.80)
+cbar_ax = fig.add_axes([0.85, 0.15, 0.05, 0.7])
+m = cm.ScalarMappable(cmap=jet)
+m.set_array([])
+fig.colorbar(m, cax=cbar_ax)
+
+plt.show()
+
+fig.savefig("output_" + visualization + ".tif",dpi=600)

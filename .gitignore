@@ -6,6 +6,8 @@ __pycache__/
 
 *.mp4
 *.avi
+*.png
+*.tif
 
 .DS_Store
 
