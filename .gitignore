@@ -8,6 +8,10 @@ __pycache__/
 *.avi
 *.png
 *.tif
+*.tiff
+*.pdf
+*.xml
+*.czi
 
 .DS_Store
 
