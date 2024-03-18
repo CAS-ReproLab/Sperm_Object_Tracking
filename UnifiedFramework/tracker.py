@@ -7,27 +7,57 @@ import json
 import argparse
 from tqdm import tqdm, trange
 
-def detect(frame, low_thresh=50, high_thresh=255, kernel_size=(3,3)):
+def detect(frame, centroid_thresh=50, segment_thresh=25, kernel_size=(3,3)):
     """
     Detects cells in a frame
     """
+    
+    # Find centroids by focusing on heads
     gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
-    _, bw = cv.threshold(gray,low_thresh,high_thresh,cv.THRESH_BINARY)
+    _, bw = cv.threshold(gray,centroid_thresh,255,cv.THRESH_BINARY)
     kernel = np.ones(kernel_size,np.uint8)
     bw = cv.morphologyEx(bw, cv.MORPH_OPEN, kernel)
-    num_labels, label_im, stats, centroids = cv.connectedComponentsWithStats(bw, 4, cv.CV_32S) 
+    _, _, _, centroids = cv.connectedComponentsWithStats(bw, 4, cv.CV_32S) 
+
+    # Run connected components again with a lower threshold to get the segmentation
+    _, bw2 = cv.threshold(gray,segment_thresh,255,cv.THRESH_BINARY)
+    num_labels, label_im, stats, _ = cv.connectedComponentsWithStats(bw2, 4, cv.CV_32S)
+
+    # Filter out the background (always index 0)
+    stats = stats[1:]
+    centroids = centroids[1:]
+    label_im -= 1
+
+    # Make sure labels line up with centroids
+    new_segmentations = []
+    new_stats = []
+    for i, centroid in enumerate(centroids):
+        r,c = int(centroid[1]),int(centroid[0])
+        if r < 0 or c < 0 or r >= label_im.shape[0] or c >= label_im.shape[1]:
+            print("Warning: Centroid found out of bounds")
+            continue
+            
+        label = label_im[r,c]
+        # TODO: Take mode of surrounding labels
+
+        if label == -1:
+            new_segmentations.append(np.array([]))
+            new_stats.append([])
+            print("Warning: Centroid could not find aligning segmentation")
+        else:
+            new_segmentations.append(where2Array(np.where(label_im == label)))
+            new_stats.append(stats[label])
+        
+
+    # TODO Filter out crossing labels
+
+    stats = np.array(new_stats)
 
     # Seperate bbox from area
     areas = stats[:,4]
     bboxs = stats[:,0:4]
 
-    # Filter out the background (always index 0)
-    areas = areas[1:]
-    bboxs = bboxs[1:]
-    centroids = centroids[1:]
-    label_im -= 1
-
-    return centroids, label_im, bboxs, areas
+    return centroids, new_segmentations, bboxs, areas
 
 def track(prev_centroids, centroids, thresh=10):
 
@@ -65,7 +95,7 @@ def makeSperm():
 
     return sperm
 
-def myStack(tuple):
+def where2Array(tuple):
     rows, cols = tuple
     return np.hstack((np.expand_dims(rows, axis=1), np.expand_dims(cols, axis=1)))
 
@@ -84,11 +114,11 @@ cap = cv.VideoCapture(videofile)
 ret, first_frame = cap.read()
 
 # Detect the cells in the first frame
-centroids, label_im, bboxs, areas = detect(first_frame)
+centroids, segmentations, bboxs, areas = detect(first_frame)
 
 # Create a lists for the whole video
 centroids_list = [centroids]
-label_im_list = [label_im]
+segmentations_list = [segmentations]
 bboxs_list = [bboxs]
 areas_list = [areas]
 mappings = []
@@ -106,14 +136,14 @@ while True:
         break
 
     # Detect the cells in the frame
-    centroids, label_im, bboxs, areas = detect(frame)
+    centroids, segmentations, bboxs, areas = detect(frame)
 
     # Track the cells
     mapping = track(centroids_list[-1], centroids)
 
-    # Add the new centroids and label_im to the lists
+    # Add the new centroids and properties to the lists
     centroids_list.append(centroids)
-    label_im_list.append(label_im)
+    segmentations_list.append(segmentations)
     bboxs_list.append(bboxs)
     areas_list.append(areas)
 
@@ -148,7 +178,7 @@ for i in trange(len(centroids_list)):
         sperm['centroid'][i] = centroids_list[i][j].tolist()
         sperm['bbox'][i] = bboxs_list[i][j].tolist()
         sperm['area'][i] = areas_list[i][j].tolist()
-        sperm['segmentation'][i] = myStack(np.where(label_im_list[i] == j)).tolist()
+        sperm['segmentation'][i] = segmentations_list[i][j].tolist()
         sperm['visible'].append(1)
 
         # Determine the sperm's properties in all subsequent frames
@@ -161,7 +191,7 @@ for i in trange(len(centroids_list)):
                 sperm['centroid'][k] = centroids_list[k][cur_index].tolist()
                 sperm['bbox'][k] = bboxs_list[k][cur_index].tolist()
                 sperm['area'][k] = areas_list[k][cur_index].tolist()
-                sperm['segmentation'][k] = myStack(np.where(label_im_list[k] == cur_index)).tolist()
+                sperm['segmentation'][k] = segmentations_list[k][cur_index].tolist()
             else:
                 # The sperm is no longer visible and is no longer tracked
                 for _ in range(k, len(centroids_list)):
