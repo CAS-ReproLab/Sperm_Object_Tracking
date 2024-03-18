@@ -1,5 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
 import cv2 as cv
 from scipy.optimize import linear_sum_assignment
 #import pickle
@@ -122,54 +121,56 @@ while True:
 
     pbar.update(1)
 
-    # Break early for testing
-    if pbar.n == 5:
-        break
-
 # Close the video file
 cap.release()
+pbar.close()
 
 all_sperm = []
 
 # Process each individual sperm cell
-for i in range(len(centroids_list)):
-    # Go through every sperm in the first frame
-    if i ==0:
-        num_sperm = len(centroids_list[i])
-        for j in range(num_sperm):
+for i in trange(len(centroids_list)):
+    
+    num_sperm = len(centroids_list[i])
+
+    for j in range(num_sperm):
+        # Go through every sperm in the first frame
+        if i == 0:
             sperm = makeSperm()
-            sperm['centroid'][i] = centroids_list[i][j].tolist()
-            sperm['bbox'][i] = bboxs_list[i][j].tolist()
-            sperm['area'][i] = areas_list[i][j].tolist()
-            sperm['segmentation'][i] = myStack(np.where(label_im_list[i] == j)).tolist()
-            sperm['visible'].append(1)
+        # Go through every newly discovered sperm in following frames
+        elif mappings[i-1][j] == -1:
+            sperm = makeSperm()
+            sperm['visible'] = [0] * i
+        # Don't double count previously discovered sperm
+        else:
+            continue
 
-            # Determine the sperm's properties in all subsequent frames
-            cur_index = j
-            for k in range(i+1, len(centroids_list)):
-                new_index = np.where(mappings[k-1] == cur_index)[0]
-                if new_index.size != 0:
-                    cur_index = new_index[0]
-                    sperm['visible'].append(1)
-                    sperm['centroid'][k] = centroids_list[k][cur_index].tolist()
-                    sperm['bbox'][k] = bboxs_list[k][cur_index].tolist()
-                    sperm['area'][k] = areas_list[k][cur_index].tolist()
-                    sperm['segmentation'][k] = myStack(np.where(label_im_list[k] == cur_index)).tolist()
-                else:
-                    # The sperm is no longer visible and is no longer tracked
-                    for _ in range(k, len(centroids_list)):
-                        sperm['visible'].append(0)
-                    break
+        # Add current frame properties
+        sperm['centroid'][i] = centroids_list[i][j].tolist()
+        sperm['bbox'][i] = bboxs_list[i][j].tolist()
+        sperm['area'][i] = areas_list[i][j].tolist()
+        sperm['segmentation'][i] = myStack(np.where(label_im_list[i] == j)).tolist()
+        sperm['visible'].append(1)
 
-            all_sperm.append(sperm)
+        # Determine the sperm's properties in all subsequent frames
+        cur_index = j
+        for k in range(i+1, len(centroids_list)):
+            new_index = np.where(mappings[k-1] == cur_index)[0]
+            if new_index.size != 0:
+                cur_index = new_index[0]
+                sperm['visible'].append(1)
+                sperm['centroid'][k] = centroids_list[k][cur_index].tolist()
+                sperm['bbox'][k] = bboxs_list[k][cur_index].tolist()
+                sperm['area'][k] = areas_list[k][cur_index].tolist()
+                sperm['segmentation'][k] = myStack(np.where(label_im_list[k] == cur_index)).tolist()
+            else:
+                # The sperm is no longer visible and is no longer tracked
+                for _ in range(k, len(centroids_list)):
+                    sperm['visible'].append(0)
+                break
 
+        all_sperm.append(sperm)
+                
 
-    # Go through every newly discovered sperm in following frames
-    else:
-        pass
-        #for j in range(len(centroids_list[j])):
-        #    if mappings[i-1][j] == -1:
-        #        sperm = 
 
 # Save sperm data to pickle file
 #with open(outputfile, 'wb') as f:
@@ -180,27 +181,3 @@ with open(outputfile, 'w') as f:
     json.dump(all_sperm, f)
 
 print(outputfile,' file saved')
-
-
-
-
-
-
-
-
-
-                #if mappings[k-1][cur_index] != -1:
-                #    cur_index = int(mappings[k-1][cur_index])
-                #    sperm['visible'].append(1)
-                #    sperm['centroid'].append(centroids_list[k][cur_index])
-                #    sperm['bbox'].append(bboxs_list[k][cur_index])
-                #    sperm['segmentation'].append(np.where(label_im_list[k] == cur_index))
-                #else:
-                    # The sperm is no longer visible and is no longer tracked
-                #    for _ in range(k, len(centroids_list)):
-                #        sperm['visible'].append(0)
-                #        sperm['centroid'].append(np.ones(2)*-1)
-                #        sperm['bbox'].append(np.ones(4)*-1)
-                #        sperm['segmentation'].append(np.array([]))
-                #    break
-        
