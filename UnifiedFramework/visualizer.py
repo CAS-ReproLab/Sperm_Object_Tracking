@@ -24,10 +24,10 @@ def boundingBoxes(frame,trackdata,frame_num):
     for sperm in trackdata:
         if sperm["visible"][frame_num] == 1:
             bbox = sperm['bbox'][str(frame_num)]
-            x = bbox[0]
-            y = bbox[1]
-            w = bbox[2]
-            h = bbox[3]
+            x = int(bbox[0])
+            y = int(bbox[1])
+            w = int(bbox[2])
+            h = int(bbox[3])
             mask = cv.rectangle(mask, (x, y), (x + w, y + h), (0, 128, 0), 3)
     img = cv.add(frame, mask)
 

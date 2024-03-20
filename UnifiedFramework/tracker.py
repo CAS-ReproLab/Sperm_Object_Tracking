@@ -38,8 +38,8 @@ def detect(frame, centroid_thresh=50, segment_thresh=40, kernel_size=(3,3)):
 
     # Associate centroids with correct segmentations
     new_segmentations = []
-    new_areas = np.zeros(len(centroids))
-    new_bboxs = np.zeros((len(centroids),4))
+    new_areas = np.zeros(len(centroids), dtype=np.int32)
+    new_bboxs = np.zeros((len(centroids),4), dtype=np.int32)
     for i, centroid in enumerate(centroids):
         r,c = int(centroid[1]),int(centroid[0])
         if r < 0 or c < 0 or r >= label_im.shape[0] or c >= label_im.shape[1]:
