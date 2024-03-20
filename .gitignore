@@ -13,6 +13,7 @@ __pycache__/
 *.xml
 *.czi
 *.json
+*.pkl
 
 .DS_Store
 
