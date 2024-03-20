@@ -244,13 +244,13 @@ for i in trange(len(centroids_list)):
 
 
 # Save sperm data to pickle file
-#outputfile = videofile.split('.')[0] + '_tracked.pkl'
-#with open(outputfile, 'wb') as f:
-#    pickle.dump(all_sperm, f)
+outputfile = videofile.split('.')[0] + '_tracked.pkl'
+with open(outputfile, 'wb') as f:
+    pickle.dump(all_sperm, f)
 
 # Save sperm data to json file
-outputfile = videofile.split('.')[0] + '_tracked.json'
-with open(outputfile, 'w') as f:
-    json.dump(all_sperm, f)
+#outputfile = videofile.split('.')[0] + '_tracked.json'
+#with open(outputfile, 'w') as f:
+#    json.dump(all_sperm, f)
 
 print(outputfile,' file saved')

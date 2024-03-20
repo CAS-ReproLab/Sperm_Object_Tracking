@@ -1,6 +1,7 @@
 import argparse
 import os
 import json
+import pickle
 import numpy as np
 import cv2 as cv
 
@@ -8,8 +9,10 @@ def opticalFlow(frame,trackdata,frame_num,mask,colors):
 
     for i,sperm in enumerate(trackdata):
         if sperm["visible"][frame_num] == 1 and sperm["visible"][frame_num-1] == 1:
-            curr = sperm['centroid'][str(frame_num)]
-            prev = sperm['centroid'][str(frame_num-1)]
+            curr = sperm['centroid'][frame_num]
+            prev = sperm['centroid'][frame_num-1]
+            #curr = sperm['centroid'][str(frame_num)] # .json
+            #prev = sperm['centroid'][str(frame_num-1)] #.json
 
             mask = cv.line(mask, (int(prev[0]), int(prev[1])), (int(curr[0]), int(curr[1])), colors[i].tolist(), 2)
             frame = cv.circle(frame, (int(curr[0]), int(curr[1])), 5, colors[i].tolist(), -1)
@@ -23,7 +26,8 @@ def boundingBoxes(frame,trackdata,frame_num):
 
     for sperm in trackdata:
         if sperm["visible"][frame_num] == 1:
-            bbox = sperm['bbox'][str(frame_num)]
+            bbox = sperm['bbox'][frame_num] # .pkl
+            # bbox = sperm['bbox'][str(frame_num)]  # .json
             x = int(bbox[0])
             y = int(bbox[1])
             w = int(bbox[2])
@@ -39,7 +43,8 @@ def coloring(frame,trackdata,frame_num,colors):
 
     for i,sperm in enumerate(trackdata):
         if sperm["visible"][frame_num] == 1:
-            segm = np.array(sperm['segmentation'][str(frame_num)])
+            segm = np.array(sperm['segmentation'][frame_num]) # .pkl
+            #segm = np.array(sperm['segmentation'][str(frame_num)]) # .json
             color = colors[i]
             mask[segm[:,0],segm[:,1]] = color
     img = cv.add(frame, mask)
@@ -53,21 +58,37 @@ parser.add_argument('videofile', type=str, help='Path to the video file')
 visualization = parser.parse_args().visualization
 videofile = parser.parse_args().videofile
 
-trackfile = videofile.split('.')[0] + '_tracked.json'
-statsfile = videofile.split('.')[0] + '_stats.json'
+trackfile = videofile.split('.')[0] + '_tracked.pkl'
+statsfile = videofile.split('.')[0] + '_stats.pkl'
 
-# Load the json files
+#trackfile = videofile.split('.')[0] + '_tracked.json'
+#statsfile = videofile.split('.')[0] + '_stats.json'
+
+# Load the pkl files
 if os.path.exists(trackfile):
-    with open(trackfile, 'r') as f:
-        trackdata = json.load(f)
+    with open(trackfile, 'rb') as f:
+        trackdata = pickle.load(f)
 else:
     trackdata = None
 
 if os.path.exists(statsfile):
-    with open(statsfile, 'r') as f:
-        statsdata = json.load(f)
+    with open(statsfile, 'rb') as f:
+        statsdata = pickle.load(f)
 else:
     statsdata = None
+
+# Load the json files
+#if os.path.exists(trackfile):
+#    with open(trackfile, 'r') as f:
+#        trackdata = json.load(f)
+#else:
+#    trackdata = None
+
+#if os.path.exists(statsfile):
+#    with open(statsfile, 'r') as f:
+#        statsdata = json.load(f)
+#else:
+#    statsdata = None
 
 # Open the video file
 cap = cv.VideoCapture(videofile)
