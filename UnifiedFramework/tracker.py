@@ -7,7 +7,7 @@ import json
 import argparse
 from tqdm import tqdm, trange
 
-def detect(frame, centroid_thresh=50, segment_thresh=25, kernel_size=(3,3)):
+def detect(frame, centroid_thresh=50, segment_thresh=50, kernel_size=(3,3)):
     """
     Detects cells in a frame
     """
@@ -17,47 +17,51 @@ def detect(frame, centroid_thresh=50, segment_thresh=25, kernel_size=(3,3)):
     _, bw = cv.threshold(gray,centroid_thresh,255,cv.THRESH_BINARY)
     kernel = np.ones(kernel_size,np.uint8)
     bw = cv.morphologyEx(bw, cv.MORPH_OPEN, kernel)
-    _, _, _, centroids = cv.connectedComponentsWithStats(bw, 4, cv.CV_32S) 
+    _, label_im, stats, centroids = cv.connectedComponentsWithStats(bw, 4, cv.CV_32S) 
 
     # Run connected components again with a lower threshold to get the segmentation
-    _, bw2 = cv.threshold(gray,segment_thresh,255,cv.THRESH_BINARY)
-    num_labels, label_im, stats, _ = cv.connectedComponentsWithStats(bw2, 4, cv.CV_32S)
-
-    # Filter out the background (always index 0)
-    stats = stats[1:]
-    centroids = centroids[1:]
-    label_im -= 1
-
-    # Make sure labels line up with centroids
-    new_segmentations = []
-    new_stats = []
-    for i, centroid in enumerate(centroids):
-        r,c = int(centroid[1]),int(centroid[0])
-        if r < 0 or c < 0 or r >= label_im.shape[0] or c >= label_im.shape[1]:
-            print("Warning: Centroid found out of bounds")
-            continue
-            
-        label = label_im[r,c]
-        # TODO: Take mode of surrounding labels
-
-        if label == -1:
-            new_segmentations.append(np.array([]))
-            new_stats.append([])
-            print("Warning: Centroid could not find aligning segmentation")
-        else:
-            new_segmentations.append(where2Array(np.where(label_im == label)))
-            new_stats.append(stats[label])
-        
-
-    # TODO Filter out crossing labels
-
-    stats = np.array(new_stats)
+    #_, bw2 = cv.threshold(gray,segment_thresh,255,cv.THRESH_BINARY)
+    #num_labels, label_im, stats, _ = cv.connectedComponentsWithStats(bw2, 4, cv.CV_32S)
 
     # Seperate bbox from area
     areas = stats[:,4]
     bboxs = stats[:,0:4]
 
-    return centroids, new_segmentations, bboxs, areas
+    # Filter out the background (always index 0)
+    areas = areas[1:]
+    bboxs = bboxs[1:]
+    centroids = centroids[1:]
+    label_im -= 1
+
+    # Turn label_im into list of segmentations
+    segmentations = labelIm2Array(label_im, len(centroids))
+
+    # Make sure labels line up with centroids
+    #new_segmentations = []
+    #new_stats = []
+    #for i, centroid in enumerate(centroids):
+    #    r,c = int(centroid[1]),int(centroid[0])
+    #    if r < 0 or c < 0 or r >= label_im.shape[0] or c >= label_im.shape[1]:
+    #        print("Warning: Centroid found out of bounds")
+    #        continue
+            
+    #    label = label_im[r,c]
+        # TODO: Take mode of surrounding labels
+
+    #    if label == -1:
+    #        new_segmentations.append(np.array([]))
+    #        new_stats.append([])
+    #        print("Warning: Centroid could not find aligning segmentation")
+    #    else:
+    #        new_segmentations.append(where2Array(np.where(label_im == label)))
+    #        new_stats.append(stats[label])
+        
+
+    # TODO Filter out crossing labels
+
+    #stats = np.array(new_stats)
+
+    return centroids, segmentations, bboxs, areas
 
 def track(prev_centroids, centroids, thresh=10):
 
@@ -65,25 +69,40 @@ def track(prev_centroids, centroids, thresh=10):
     num_centroids = centroids.shape[0]
     num_prev_centroids = prev_centroids.shape[0]
 
-    # Create a cost matrix
-    cost_matrix = np.zeros((num_prev_centroids,num_centroids))
-
     # Fill in the cost matrix
-    for i in range(num_prev_centroids):
-        for j in range(num_centroids):
-            cost_matrix[i,j] = np.linalg.norm(centroids[j] - prev_centroids[i])
+    jv, iv = np.meshgrid(np.arange(num_centroids), np.arange(num_prev_centroids))
+    cost_matrix = np.linalg.norm(centroids[jv] - prev_centroids[iv], axis=2)
+
+    # Conceptually, the above code is equivalent to the following:
+    #cost_matrix = np.zeros((num_prev_centroids,num_centroids))
+    #for i in range(num_prev_centroids):
+    #    for j in range(num_centroids):
+    #        cost_matrix[i,j] = np.linalg.norm(centroids[j] - prev_centroids[i])
 
     # Solve the assignment problem wiht Hungarian algorithm
     row_ind, col_ind = linear_sum_assignment(cost_matrix)
 
     # Make mapping from previous centroids to current centroids (or -1 if no match)
-    mapping = np.zeros(num_centroids) - 1
+    mapping = np.zeros(num_centroids).astype(np.int64) - 1
 
     for r,c in zip(row_ind,col_ind):
         if cost_matrix[r,c] < thresh:
             mapping[c] = r
 
     return mapping
+
+def labelIm2Array(label_im, num_labels):
+    segmentations = []
+    for i in range(0, num_labels):
+        segmentations.append([])
+
+    rows, cols = label_im.shape
+    for i in range(rows):
+        for j in range(cols):
+            if label_im[i,j] != -1:
+                segmentations[label_im[i,j]].append([i,j])
+
+    return segmentations
 
 def makeSperm():
     sperm = {}
@@ -95,9 +114,15 @@ def makeSperm():
 
     return sperm
 
-def where2Array(tuple):
-    rows, cols = tuple
-    return np.hstack((np.expand_dims(rows, axis=1), np.expand_dims(cols, axis=1)))
+
+#def where2Array(tuple):
+#    rows, cols = tuple
+#    return np.hstack((np.expand_dims(rows, axis=1), np.expand_dims(cols, axis=1)))
+
+# Get the segmentation for each label
+#segmentations = []
+#for i in range(0, len(stats)):
+#    segmentations.append(where2Array(np.where(label_im == i)))
 
 
 ### Main Code ###
@@ -112,6 +137,10 @@ cap = cv.VideoCapture(videofile)
 
 # Read the first frame
 ret, first_frame = cap.read()
+
+if not ret:
+    raise ValueError('Error: Could not read the video file or video file could not be found')
+
 
 # Detect the cells in the first frame
 centroids, segmentations, bboxs, areas = detect(first_frame)
@@ -178,20 +207,20 @@ for i in trange(len(centroids_list)):
         sperm['centroid'][i] = centroids_list[i][j].tolist()
         sperm['bbox'][i] = bboxs_list[i][j].tolist()
         sperm['area'][i] = areas_list[i][j].tolist()
-        sperm['segmentation'][i] = segmentations_list[i][j].tolist()
+        sperm['segmentation'][i] = segmentations_list[i][j]
         sperm['visible'].append(1)
 
         # Determine the sperm's properties in all subsequent frames
         cur_index = j
         for k in range(i+1, len(centroids_list)):
-            new_index = np.where(mappings[k-1] == cur_index)[0]
+            new_index = np.where(mappings[k-1] == cur_index)[0] # k-1 because their is one less mapping than centroids
             if new_index.size != 0:
                 cur_index = new_index[0]
                 sperm['visible'].append(1)
                 sperm['centroid'][k] = centroids_list[k][cur_index].tolist()
                 sperm['bbox'][k] = bboxs_list[k][cur_index].tolist()
                 sperm['area'][k] = areas_list[k][cur_index].tolist()
-                sperm['segmentation'][k] = segmentations_list[k][cur_index].tolist()
+                sperm['segmentation'][k] = segmentations_list[k][cur_index]
             else:
                 # The sperm is no longer visible and is no longer tracked
                 for _ in range(k, len(centroids_list)):
