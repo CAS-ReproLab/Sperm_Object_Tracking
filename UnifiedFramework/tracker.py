@@ -1,13 +1,13 @@
 import numpy as np
 import cv2 as cv
 from scipy.optimize import linear_sum_assignment
-#import pickle
+import pickle
 import json
 
 import argparse
 from tqdm import tqdm, trange
 
-def detect(frame, centroid_thresh=50, segment_thresh=50, kernel_size=(3,3)):
+def detect(frame, centroid_thresh=50, segment_thresh=40, kernel_size=(3,3)):
     """
     Detects cells in a frame
     """
@@ -17,11 +17,11 @@ def detect(frame, centroid_thresh=50, segment_thresh=50, kernel_size=(3,3)):
     _, bw = cv.threshold(gray,centroid_thresh,255,cv.THRESH_BINARY)
     kernel = np.ones(kernel_size,np.uint8)
     bw = cv.morphologyEx(bw, cv.MORPH_OPEN, kernel)
-    _, label_im, stats, centroids = cv.connectedComponentsWithStats(bw, 4, cv.CV_32S) 
+    _, _, _, centroids = cv.connectedComponentsWithStats(bw, 4, cv.CV_32S) 
 
     # Run connected components again with a lower threshold to get the segmentation
-    #_, bw2 = cv.threshold(gray,segment_thresh,255,cv.THRESH_BINARY)
-    #num_labels, label_im, stats, _ = cv.connectedComponentsWithStats(bw2, 4, cv.CV_32S)
+    _, bw2 = cv.threshold(gray,segment_thresh,255,cv.THRESH_BINARY)
+    _, label_im, stats, _ = cv.connectedComponentsWithStats(bw2, 4, cv.CV_32S)
 
     # Seperate bbox from area
     areas = stats[:,4]
@@ -34,34 +34,47 @@ def detect(frame, centroid_thresh=50, segment_thresh=50, kernel_size=(3,3)):
     label_im -= 1
 
     # Turn label_im into list of segmentations
-    segmentations = labelIm2Array(label_im, len(centroids))
+    segmentations = labelIm2Array(label_im, len(stats))
 
-    # Make sure labels line up with centroids
-    #new_segmentations = []
-    #new_stats = []
-    #for i, centroid in enumerate(centroids):
-    #    r,c = int(centroid[1]),int(centroid[0])
-    #    if r < 0 or c < 0 or r >= label_im.shape[0] or c >= label_im.shape[1]:
-    #        print("Warning: Centroid found out of bounds")
-    #        continue
-            
-    #    label = label_im[r,c]
-        # TODO: Take mode of surrounding labels
+    # Associate centroids with correct segmentations
+    new_segmentations = []
+    new_areas = np.zeros(len(centroids))
+    new_bboxs = np.zeros((len(centroids),4))
+    for i, centroid in enumerate(centroids):
+        r,c = int(centroid[1]),int(centroid[0])
+        if r < 0 or c < 0 or r >= label_im.shape[0] or c >= label_im.shape[1]:
+            print("Warning: Centroid found out of bounds")
+            continue
 
-    #    if label == -1:
-    #        new_segmentations.append(np.array([]))
-    #        new_stats.append([])
-    #        print("Warning: Centroid could not find aligning segmentation")
-    #    else:
-    #        new_segmentations.append(where2Array(np.where(label_im == label)))
-    #        new_stats.append(stats[label])
+        # Check the label of the four surrounding pixels    
+        r2 = r+1 if r+1 < label_im.shape[0] else r
+        c2 = c+1 if c+1 < label_im.shape[1] else c
+        label_tl = label_im[r,c]
+        label_tr = label_im[r,c2]
+        label_bl = label_im[r2,c]
+        label_br = label_im[r2,c2]
         
+        if label_tl >= 0:
+            label = label_tl
+        elif label_tr >= 0:
+            label = label_tr
+        elif label_bl >= 0:
+            label = label_bl
+        else:
+            label = label_br
+            # TODO: Check mode of the four labels if they are greater than 1
+        
+        if label == -1:
+            print("\n Warning: Centroid found in background")
+            new_segmentations.append([-1,-1])
+
+        new_segmentations.append(segmentations[label])
+        new_areas[i] = areas[label]
+        new_bboxs[i] = bboxs[label]
 
     # TODO Filter out crossing labels
 
-    #stats = np.array(new_stats)
-
-    return centroids, segmentations, bboxs, areas
+    return centroids, new_segmentations, new_bboxs, new_areas
 
 def track(prev_centroids, centroids, thresh=10):
 
@@ -131,7 +144,6 @@ parser = argparse.ArgumentParser(description='Track cells in a video')
 parser.add_argument('videofile', type=str, help='Path to the video file')
 
 videofile = parser.parse_args().videofile
-outputfile = videofile.split('.')[0] + '_tracked.json'
 
 cap = cv.VideoCapture(videofile)
 
@@ -232,10 +244,12 @@ for i in trange(len(centroids_list)):
 
 
 # Save sperm data to pickle file
+#outputfile = videofile.split('.')[0] + '_tracked.pkl'
 #with open(outputfile, 'wb') as f:
 #    pickle.dump(all_sperm, f)
 
 # Save sperm data to json file
+outputfile = videofile.split('.')[0] + '_tracked.json'
 with open(outputfile, 'w') as f:
     json.dump(all_sperm, f)
 
