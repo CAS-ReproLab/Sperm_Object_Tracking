@@ -7,19 +7,78 @@ import json
 import argparse
 from tqdm import tqdm, trange
 
+def getCentroids(frame, thresh=50, kernel_size=(3,3)):
+     # Find centroids by focusing on heads
+    gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+    _, bw = cv.threshold(gray,thresh,255,cv.THRESH_BINARY)
+    kernel = np.ones(kernel_size,np.uint8)
+    bw = cv.morphologyEx(bw, cv.MORPH_OPEN, kernel)
+    _, _, _, centroids = cv.connectedComponentsWithStats(bw, 4, cv.CV_32S) 
+
+    return centroids
+
+def LoadSAMpredictor(device='cuda'):
+    # Load the SAM model
+    from segment_anything import sam_model_registry, SamPredictor
+    sam_checkpoint = "sam_vit_h_4b8939.pth"
+    model_type = "vit_h"
+    sam = sam_model_registry[model_type](checkpoint=sam_checkpoint)
+    sam.to(device=device)
+    predictor = SamPredictor(sam)
+    return predictor
+
+def detect_SAM(frame, centroid_thresh=50, kernel_size=(3,3), SAM_predictor=None):
+    """
+    Detects cells in a frame
+    """
+
+    # Find centroids by focusing on heads
+    centroids = getCentroids(frame, centroid_thresh, kernel_size)
+   
+    if SAM_predictor is None:
+        SAM_predictor = LoadSAMpredictor()
+
+    # Run the SAM model
+    SAM_predictor.set_image(frame)
+    
+    bboxs = []
+    areas = []
+    segmentations = []
+
+    for i in range(len(centroids)):
+        input_point = np.array([centroids[i]])
+        input_label = np.array([1])
+
+
+        masks, scores, logits = SAM_predictor.predict(
+            point_coords=input_point,
+            point_labels=input_label,
+            multimask_output=False,
+        )
+
+        mask = masks[0]
+
+        # Append stats
+        areas.append(mask.sum())
+        bboxs.append(np.asarray(cv.boundingRect(mask.astype(np.uint8))))
+        segmentations.append(np.array(np.where(mask > 0)).T)
+
+
+    # TODO Filter out crossing labels
+
+    return centroids, segmentations, bboxs, areas
+
+
 def detect(frame, centroid_thresh=50, segment_thresh=40, kernel_size=(3,3)):
     """
     Detects cells in a frame
     """
     
     # Find centroids by focusing on heads
-    gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
-    _, bw = cv.threshold(gray,centroid_thresh,255,cv.THRESH_BINARY)
-    kernel = np.ones(kernel_size,np.uint8)
-    bw = cv.morphologyEx(bw, cv.MORPH_OPEN, kernel)
-    _, _, _, centroids = cv.connectedComponentsWithStats(bw, 4, cv.CV_32S) 
-
+    centroids = getCentroids(frame, centroid_thresh, kernel_size)
+   
     # Run connected components again with a lower threshold to get the segmentation
+    gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
     _, bw2 = cv.threshold(gray,segment_thresh,255,cv.THRESH_BINARY)
     _, label_im, stats, _ = cv.connectedComponentsWithStats(bw2, 4, cv.CV_32S)
 
@@ -142,8 +201,10 @@ def makeSperm():
 
 parser = argparse.ArgumentParser(description='Track cells in a video')
 parser.add_argument('videofile', type=str, help='Path to the video file')
+parser.add_argument('SAM', type=int, default=0, help='Use SAM model for segmentation (1) or not (0)')
 
 videofile = parser.parse_args().videofile
+use_SAM = bool(parser.parse_args().SAM)
 
 cap = cv.VideoCapture(videofile)
 
@@ -155,7 +216,11 @@ if not ret:
 
 
 # Detect the cells in the first frame
-centroids, segmentations, bboxs, areas = detect(first_frame)
+if use_SAM:
+    SAM_predictor = LoadSAMpredictor()
+    centroids, segmentations, bboxs, areas = detect_SAM(first_frame, SAM_predictor=SAM_predictor)
+else:
+    centroids, segmentations, bboxs, areas = detect(first_frame)
 
 # Create a lists for the whole video
 centroids_list = [centroids]
@@ -177,7 +242,10 @@ while True:
         break
 
     # Detect the cells in the frame
-    centroids, segmentations, bboxs, areas = detect(frame)
+    if use_SAM:
+        centroids, segmentations, bboxs, areas = detect_SAM(frame, SAM_predictor=SAM_predictor)
+    else:
+        centroids, segmentations, bboxs, areas = detect(frame)
 
     # Track the cells
     mapping = track(centroids_list[-1], centroids)
@@ -191,6 +259,9 @@ while True:
     mappings.append(mapping)
 
     pbar.update(1)
+
+    if pbar.n == 10:
+        break
 
 # Close the video file
 cap.release()
