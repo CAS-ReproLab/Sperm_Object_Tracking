@@ -160,7 +160,7 @@ height = cap.get(cv.CAP_PROP_FRAME_HEIGHT )
 fps =  cap.get(cv.CAP_PROP_FPS)
 
 # Create a video writer
-result_vid = cv.VideoWriter("output_" + visualization + ".mp4",cv.VideoWriter_fourcc(*'mp4v'),10,(int(width),int(height)))
+result_vid = cv.VideoWriter("output_" + visualization + ".mp4",cv.VideoWriter_fourcc(*'mp4v'),fps,(int(width),int(height)))
 
 # Create some random colors
 num_sperm = len(trackdata)
@@ -168,6 +168,8 @@ colors = np.random.randint(0, 255, (num_sperm, 3))
 
 if visualization == "flow":
     ret, frame = cap.read()
+    if not ret:
+        raise Exception("Failed to read the first frame.")
     # Create a mask image for drawing purposes
     mask = np.zeros_like(frame)
     frame_num = 1
