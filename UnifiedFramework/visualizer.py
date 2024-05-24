@@ -62,36 +62,39 @@ def colorSpeed(frame, trackdata, statsdata, frame_num):
     color_fast = np.array([0, 0, 255], dtype=np.uint8)  # Blue for fast
 
     # Extract average speeds from statsdata
-    speeds = [statsdata[i]['average_speed'] for i in range(len(statsdata))]
+    speeds = [statsdata[i]['average_speed'] for i in range(len(statsdata) - 1)]  # Exclude 'max_average_speed'
 
-    # Calculate speed thresholds for categorization
-    slow_threshold = 2
-    medium_threshold = 4
-    #fast_threshold = np.percentile(speeds, 75)
+    # Get max_average_speed from statsdata
+    max_speed = statsdata["max_average_speed"]
 
-    #slow_threshold = np.percentile(speeds, 25)
-    #medium_threshold = np.percentile(speeds, 50)
-    #fast_threshold = np.percentile(speeds, 75)
+    # Normalize the speeds for visualization
+    normalized_speeds = [speed / max_speed * 255 for speed in speeds]
 
+    # Apply convertScaleAbs to emphasize the highest speeds
+    abs_speeds = cv.convertScaleAbs(np.array(normalized_speeds, dtype=np.float32))
 
-    # Determine the color for each sperm based on
-    # its average speed
+    # Calculate speed thresholds based on percentiles
+    slow_threshold = np.percentile(abs_speeds, 33)
+    medium_threshold = np.percentile(abs_speeds, 66)
+
+    # Determine the color for each sperm based on its max average speed
     sperm_colors = []
-    for speed in speeds:
-        if speed == 0:
+    for speed in abs_speeds:
+        if speed < 2:
             color = color_static  # Red for static
-            category = "static"
-        elif 0 < speed <= slow_threshold:
+            # category = "static"
+        elif 2 <= speed <= slow_threshold:
             color = color_slow  # Purple for slow
-            category = "slow"
+            # category = "slow"
         elif slow_threshold < speed <= medium_threshold:
             color = color_medium  # Green for medium
-            category = "medium"
+            # category = "medium"
         else:
-            color = color_fast  # Blue for fast
-            category = "fast"
+            color = color_fast
+            # category = "fast"
+
         sperm_colors.append(color)
-        print(f"Sperm speed: {speed}, Category: {category}, Color: {color}")
+        # print(f"Sperm speed: {speed}, Category: {category}, Color: {color}")
 
     # Assign colors based on speed and apply to mask where visible and segmented
     for i, sperm in enumerate(trackdata):
@@ -199,9 +202,9 @@ while(1):
         img = frame
 
     bgr_img = cv.cvtColor(img, cv.COLOR_RGB2BGR)
-    result_vid.write(img)
+    result_vid.write(bgr_img)
 
-    cv.imshow('frame', img)
+    cv.imshow('frame', bgr_img)
     k = cv.waitKey(30) & 0xff
     if k == 27:
         break
