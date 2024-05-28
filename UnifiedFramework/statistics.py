@@ -81,7 +81,7 @@ for i in range(len(data)):
     average_speed = averagePathVelocity(centroids, visible, 0.26, 5)
 
     stats[i] = {}
-    stats[i]["average_speed"] = average_speed
+    stats[i]["VAP"] = average_speed
 
 # Find the maximum average speed
 #max_speed = max(stats[i]["average_speed"] for i in stats)

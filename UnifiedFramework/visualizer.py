@@ -4,6 +4,9 @@ import json
 import pickle
 import numpy as np
 import cv2 as cv
+import matplotlib.pyplot as plt
+from matplotlib import cm
+
 
 def opticalFlow(frame,trackdata,frame_num,mask,colors):
 
@@ -62,7 +65,7 @@ def colorSpeed(frame, trackdata, statsdata, frame_num):
     color_fast = np.array([0, 0, 255], dtype=np.uint8)  # Blue for fast
 
     # Extract average speeds from statsdata
-    speeds = [statsdata[i]['average_speed'] for i in range(len(statsdata) - 1)]  # Exclude 'max_average_speed'
+    speeds = [statsdata[i]['VAP'] for i in range(len(statsdata) - 1)]  # Exclude 'max_average_speed'
 
     # Get max_average_speed from statsdata
     #max_speed = statsdata["max_average_speed"]
@@ -96,6 +99,50 @@ def colorSpeed(frame, trackdata, statsdata, frame_num):
 
         sperm_colors.append(color)
         # print(f"Sperm speed: {speed}, Category: {category}, Color: {color}")
+
+    # Assign colors based on speed and apply to mask where visible and segmented
+    for i, sperm in enumerate(trackdata):
+        if sperm["visible"][frame_num] == 1:
+            segm = np.array(sperm['segmentation'][frame_num])
+
+            if segm.ndim != 2 or segm.shape[1] != 2:
+                print(f"Invalid segmentation data format at frame {frame_num} for sperm index {i}")
+                continue  # Skip this entry
+
+            # Use precomputed color for this sperm
+            color = sperm_colors[i]
+            mask[segm[:, 0], segm[:, 1]] = color
+
+    # Combine original frame with mask
+    img = cv.add(frame, mask)
+
+    return img
+
+
+def colorMap(frame, trackdata, statsdata, frame_num):
+    mask = np.zeros_like(frame)
+
+    # Extract average speeds from statsdata
+    speeds = [statsdata[i]['VAP'] for i in range(len(statsdata) - 1)]  # Exclude 'max_average_speed'
+
+    # Define a small threshold to consider as static
+    static_threshold = 0.5  # Adjust this value as needed
+
+    # Normalize the speeds for visualization
+    max_speed_value = max(speeds)
+    normalized_speeds = [speed / max_speed_value for speed in speeds]
+
+    # Get a colormap from matplotlib
+    colormap = cm.get_cmap('tab20b')
+
+    # Map normalized speeds to colors using the colormap
+    sperm_colors = []
+    for speed in normalized_speeds:
+        if speed < static_threshold / max_speed_value:  # Handle static sperm
+            color = np.array([255, 0, 0], dtype=np.uint8)  # Red for static
+        else:
+            color = (np.array(colormap(speed)[:3]) * 255).astype(np.uint8)  # Get RGB values
+        sperm_colors.append(color)
 
     # Assign colors based on speed and apply to mask where visible and segmented
     for i, sperm in enumerate(trackdata):
@@ -198,6 +245,9 @@ while(1):
 
     elif visualization == "speed":
         img = colorSpeed(frame, trackdata, statsdata, frame_num)
+
+    elif visualization == "map":
+        img = colorMap(frame, trackdata, statsdata, frame_num)
 
     elif visualization == "original":
         img = frame
