@@ -78,16 +78,18 @@ def colorSpeed(frame, trackdata, statsdata, frame_num):
     abs_speeds = cv.convertScaleAbs(np.array(normalized_speeds, dtype=np.float32))
 
     # Calculate speed thresholds based on percentiles
-    slow_threshold = np.percentile(abs_speeds, 33)
-    medium_threshold = np.percentile(abs_speeds, 66)
+    # Static is the lower 25% since they move slightly
+    static_threshold = np.percentile(abs_speeds, 25)
+    slow_threshold = np.percentile(abs_speeds, 50)
+    medium_threshold = np.percentile(abs_speeds, 75)
 
     # Determine the color for each sperm based on its max average speed
     sperm_colors = []
     for speed in abs_speeds:
-        if speed < 2:
+        if speed <= static_threshold:
             color = color_static  # Red for static
             # category = "static"
-        elif 2 <= speed <= slow_threshold:
+        elif static_threshold < speed <= slow_threshold:
             color = color_slow  # Purple for slow
             # category = "slow"
         elif slow_threshold < speed <= medium_threshold:
