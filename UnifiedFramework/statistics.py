@@ -84,10 +84,10 @@ for i in range(len(data)):
     stats[i]["average_speed"] = average_speed
 
 # Find the maximum average speed
-max_speed = max(stats[i]["average_speed"] for i in stats)
+#max_speed = max(stats[i]["average_speed"] for i in stats)
 
 # Add the maximum average speed to the stats dictionary
-stats["max_average_speed"] = max_speed
+#stats["max_average_speed"] = max_speed
 
 # Save the stats to a json file
 outputfile = pklfile.split('.')[0][:-8] + '_stats.pkl'

@@ -65,10 +65,11 @@ def colorSpeed(frame, trackdata, statsdata, frame_num):
     speeds = [statsdata[i]['average_speed'] for i in range(len(statsdata) - 1)]  # Exclude 'max_average_speed'
 
     # Get max_average_speed from statsdata
-    max_speed = statsdata["max_average_speed"]
+    #max_speed = statsdata["max_average_speed"]
 
     # Normalize the speeds for visualization
-    normalized_speeds = [speed / max_speed * 255 for speed in speeds]
+    max_speed_value = max(speeds)
+    normalized_speeds = [speed / max_speed_value * 255 for speed in speeds]
 
     # Apply convertScaleAbs to emphasize the highest speeds
     abs_speeds = cv.convertScaleAbs(np.array(normalized_speeds, dtype=np.float32))
