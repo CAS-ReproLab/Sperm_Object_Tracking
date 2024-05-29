@@ -137,6 +137,9 @@ def processVideo(videofile):
         if frame is None:
             break
 
+        # Detect the cells in the frame
+        centroids, segmentations, bboxs, areas = detect(frame)
+
         # Add the new centroids and properties to the lists
         centroids_list.append(centroids)
         segmentations_list.append(segmentations)

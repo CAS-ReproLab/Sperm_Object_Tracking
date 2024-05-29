@@ -51,96 +51,91 @@ def coloring(frame,trackdata,frame_num,colors):
 
     return img
 
-parser = argparse.ArgumentParser(description='Show the tracked cells in a video')
-parser.add_argument('visualization', type=str, help='Type of visualization to create')
-parser.add_argument('videofile', type=str, help='Path to the video file')
+def runVisualization(videofile,trackdata,statsdata=None,visualization="flow",savefile=None):
 
-visualization = parser.parse_args().visualization
-videofile = parser.parse_args().videofile
+    # Open the video file
+    cap = cv.VideoCapture(videofile)
 
-trackfile = videofile.split('.')[0] + '_tracked.pkl'
-statsfile = videofile.split('.')[0] + '_stats.pkl'
+    # Capture the first frame
+    width = cap.get(cv.CAP_PROP_FRAME_WIDTH )
+    height = cap.get(cv.CAP_PROP_FRAME_HEIGHT )
+    fps =  cap.get(cv.CAP_PROP_FPS)
 
-#trackfile = videofile.split('.')[0] + '_tracked.json'
-#statsfile = videofile.split('.')[0] + '_stats.json'
+    # Create a video writer
+    if savefile is not None:
+        result_vid = cv.VideoWriter(savefile,cv.VideoWriter_fourcc(*'mp4v'),10,(int(width),int(height)))
 
-# Load the pkl files
-if os.path.exists(trackfile):
-    with open(trackfile, 'rb') as f:
-        trackdata = pickle.load(f)
-else:
-    trackdata = None
-
-if os.path.exists(statsfile):
-    with open(statsfile, 'rb') as f:
-        statsdata = pickle.load(f)
-else:
-    statsdata = None
-
-# Load the json files
-#if os.path.exists(trackfile):
-#    with open(trackfile, 'r') as f:
-#        trackdata = json.load(f)
-#else:
-#    trackdata = None
-
-#if os.path.exists(statsfile):
-#    with open(statsfile, 'r') as f:
-#        statsdata = json.load(f)
-#else:
-#    statsdata = None
-
-# Open the video file
-cap = cv.VideoCapture(videofile)
-
-# Capture the first frame
-width = cap.get(cv.CAP_PROP_FRAME_WIDTH )
-height = cap.get(cv.CAP_PROP_FRAME_HEIGHT )
-fps =  cap.get(cv.CAP_PROP_FPS)
-
-# Create a video writer
-result_vid = cv.VideoWriter("output_" + visualization + ".mp4",cv.VideoWriter_fourcc(*'mp4v'),10,(int(width),int(height)))
-
-# Create some random colors
-num_sperm = len(trackdata)
-colors = np.random.randint(0, 255, (num_sperm, 3))
-
-if visualization == "flow":
-    ret, frame = cap.read()
-    # Create a mask image for drawing purposes
-    mask = np.zeros_like(frame)
-    frame_num = 1
-else:
-    frame_num = 0
-
-
-while(1):
-    ret, frame = cap.read()
-    if not ret:
-        print("Video Finished.")
-        break
+    # Create some random colors
+    num_sperm = len(trackdata)
+    colors = np.random.randint(0, 255, (num_sperm, 3))
 
     if visualization == "flow":
-        img = opticalFlow(frame,trackdata,frame_num,mask,colors)
+        ret, frame = cap.read()
+        # Create a mask image for drawing purposes
+        mask = np.zeros_like(frame)
+        frame_num = 1
+    else:
+        frame_num = 0
 
-    elif visualization == "bbox":
-        img = boundingBoxes(frame,trackdata,frame_num)
+    while(1):
+        ret, frame = cap.read()
+        if not ret:
+            print("Video Finished.")
+            break
 
-    elif visualization == "segments":
-        img = coloring(frame,trackdata,frame_num,colors)
+        if visualization == "flow":
+            img = opticalFlow(frame,trackdata,frame_num,mask,colors)
 
-    elif visualization == "original":
-        img = frame
+        elif visualization == "bbox":
+            img = boundingBoxes(frame,trackdata,frame_num)
 
-    result_vid.write(img)
+        elif visualization == "segments":
+            img = coloring(frame,trackdata,frame_num,colors)
 
-    cv.imshow('frame', img)
-    k = cv.waitKey(30) & 0xff
-    if k == 27:
-        break
+        elif visualization == "original":
+            img = frame
 
-    frame_num += 1
+        if savefile is not None:
+            result_vid.write(img)
 
-result_vid.release()
+        cv.imshow('frame', img)
+        k = cv.waitKey(30) & 0xff
+        if k == 27:
+            break
 
-cv.destroyAllWindows()
+        frame_num += 1
+
+    if savefile is not None:
+        result_vid.release()
+
+    cv.destroyAllWindows()
+
+if __name__ == '__main__':
+
+    parser = argparse.ArgumentParser(description='Show the tracked cells in a video')
+    parser.add_argument('visualization', type=str, help='Type of visualization to create')
+    parser.add_argument('videofile', type=str, help='Path to the video file')
+
+    visualization = parser.parse_args().visualization
+    videofile = parser.parse_args().videofile
+
+    trackfile = videofile.split('.')[0] + '_tracked.pkl'
+    statsfile = videofile.split('.')[0] + '_stats.pkl'
+
+    # Load the pkl files
+    if os.path.exists(trackfile):
+        with open(trackfile, 'rb') as f:
+            trackdata = pickle.load(f)
+    else:
+        trackdata = None
+
+    if os.path.exists(statsfile):
+        with open(statsfile, 'rb') as f:
+            statsdata = pickle.load(f)
+    else:
+        statsdata = None
+    
+    savefile = "output_" + visualization + ".mp4"
+
+    runVisualization(videofile,trackdata,statsdata,visualization,savefile)
+    
