@@ -59,7 +59,10 @@ def detect(frame, kernel_size=(3,3)):
     # Turn label_im into list of segmentations
     segmentations = labelIm2Array(label_im, len(stats))
 
+    print(centroids.shape)
+
     # Associate centroids with correct segmentations
+    del_indices = []
     new_segmentations = []
     new_areas = np.zeros(len(centroids), dtype=np.int32)
     new_bboxs = np.zeros((len(centroids),4), dtype=np.int32)
@@ -89,13 +92,18 @@ def detect(frame, kernel_size=(3,3)):
         
         if label == -1:
             print("\n Warning: Centroid found in background")
-            new_segmentations.append([-1,-1])
+            del_indices.append(i)
+            continue
 
         new_segmentations.append(segmentations[label])
         new_areas[i] = areas[label]
         new_bboxs[i] = bboxs[label]
 
     # TODO Filter out crossing labels
+
+    # Remove centroids that were found in the background
+    if len(del_indices) > 0:
+        centroids = np.delete(centroids, del_indices, axis=0)
 
     return centroids, new_segmentations, new_bboxs, new_areas
 
