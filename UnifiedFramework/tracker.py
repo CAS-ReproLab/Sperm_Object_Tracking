@@ -68,18 +68,42 @@ def detect_SAM(frame, centroid_thresh=50, kernel_size=(3,3), SAM_predictor=None)
 
     return centroids, segmentations, bboxs, areas
 
+def threshold(frame, method='otsu',global_thresh=50):
+    
+    gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+    #mid_val = np.median(gray)
+    #gray = np.abs(gray - mid_val).astype(np.uint8)
 
-def detect(frame, centroid_thresh=50, segment_thresh=40, kernel_size=(3,3)):
+    if method == 'global':
+        _, bw = cv.threshold(gray,global_thresh,255,cv.THRESH_BINARY)
+    elif method == 'otsu':
+        _, bw = cv.threshold(gray,0,255,cv.THRESH_BINARY+cv.THRESH_OTSU)
+    elif method == 'adaptive':
+        bw = cv.adaptiveThreshold(gray,255,cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY,11,-2)
+    elif method == 'hybrid':
+        _, bw1 = cv.threshold(gray,0,255,cv.THRESH_BINARY+cv.THRESH_OTSU)
+
+        bw2 = cv.adaptiveThreshold(gray,255,cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY,11,-2)
+        bw = cv.bitwise_or(bw1,bw2)
+    else:
+        raise ValueError('Invalid thresholding method')
+    
+    return bw
+
+
+def detect(frame, kernel_size=(3,3)):
     """
     Detects cells in a frame
     """
     
     # Find centroids by focusing on heads
-    centroids = getCentroids(frame, centroid_thresh, kernel_size)
-   
+    bw = threshold(frame, method='otsu')
+    kernel = np.ones(kernel_size,np.uint8)
+    bw = cv.morphologyEx(bw, cv.MORPH_OPEN, kernel)
+    _, _, _, centroids = cv.connectedComponentsWithStats(bw, 4, cv.CV_32S) 
+
     # Run connected components again with a lower threshold to get the segmentation
-    gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
-    _, bw2 = cv.threshold(gray,segment_thresh,255,cv.THRESH_BINARY)
+    bw2 = threshold(frame, method='hybrid')
     _, label_im, stats, _ = cv.connectedComponentsWithStats(bw2, 4, cv.CV_32S)
 
     # Seperate bbox from area
@@ -96,6 +120,7 @@ def detect(frame, centroid_thresh=50, segment_thresh=40, kernel_size=(3,3)):
     segmentations = labelIm2Array(label_im, len(stats))
 
     # Associate centroids with correct segmentations
+    del_indices = []
     new_segmentations = []
     new_areas = np.zeros(len(centroids), dtype=np.int32)
     new_bboxs = np.zeros((len(centroids),4), dtype=np.int32)
@@ -125,13 +150,18 @@ def detect(frame, centroid_thresh=50, segment_thresh=40, kernel_size=(3,3)):
         
         if label == -1:
             print("\n Warning: Centroid found in background")
-            new_segmentations.append([-1,-1])
+            del_indices.append(i)
+            continue
 
         new_segmentations.append(segmentations[label])
         new_areas[i] = areas[label]
         new_bboxs[i] = bboxs[label]
 
     # TODO Filter out crossing labels
+
+    # Remove centroids that were found in the background
+    if len(del_indices) > 0:
+        centroids = np.delete(centroids, del_indices, axis=0)
 
     return centroids, new_segmentations, new_bboxs, new_areas
 
@@ -163,6 +193,118 @@ def track(prev_centroids, centroids, thresh=10):
 
     return mapping
 
+def processVideo(videofile):
+
+    cap = cv.VideoCapture(videofile)
+
+    # Read the first frame
+    ret, first_frame = cap.read()
+
+    if not ret:
+        raise ValueError('Error: Could not read the video file or video file could not be found')
+
+
+    # Detect the cells in the first frame
+    centroids, segmentations, bboxs, areas = detect(first_frame)
+
+    # Create a lists for the whole video
+    centroids_list = [centroids]
+    segmentations_list = [segmentations]
+    bboxs_list = [bboxs]
+    areas_list = [areas]
+
+    # Loop through the video to generate mappings
+    total_frame_count = int(cap.get(cv.CAP_PROP_FRAME_COUNT))
+    pbar = tqdm(total=total_frame_count)
+
+    while True:
+        # Read the next frame
+        ret, frame = cap.read()
+
+        # If the frame is None, then we have reached the end of the video
+        if frame is None:
+            break
+
+        # Detect the cells in the frame
+        centroids, segmentations, bboxs, areas = detect(frame)
+
+        # Add the new centroids and properties to the lists
+        centroids_list.append(centroids)
+        segmentations_list.append(segmentations)
+        bboxs_list.append(bboxs)
+        areas_list.append(areas)
+
+        pbar.update(1)
+
+    # Close the video file
+    cap.release()
+    pbar.close()
+
+    return centroids_list, segmentations_list, bboxs_list, areas_list
+
+def trackCentroids(centroids_list):
+
+    # Create a list to store the mappings
+    mappings = []
+
+    # Loop through the video to generate mappings
+    for i in trange(1, len(centroids_list)):
+        mapping = track(centroids_list[i-1], centroids_list[i])
+        mappings.append(mapping)
+
+    return mappings
+
+def generateTrackingData(mappings, centroids_list, segmentations_list, bboxs_list, areas_list):
+
+    all_sperm = []
+
+    # Process each individual sperm cell
+    for i in trange(len(centroids_list)):
+        
+        num_sperm = len(centroids_list[i])
+
+        for j in range(num_sperm):
+            # Go through every sperm in the first frame
+            if i == 0:
+                sperm = makeSperm()
+            # Go through every newly discovered sperm in following frames
+            elif mappings[i-1][j] == -1:
+                sperm = makeSperm()
+                sperm['visible'] = [0] * i
+            # Don't double count previously discovered sperm
+            else:
+                continue
+
+            # Add current frame properties
+            sperm['centroid'][i] = centroids_list[i][j].tolist()
+            sperm['bbox'][i] = bboxs_list[i][j].tolist()
+            sperm['area'][i] = areas_list[i][j].tolist()
+            sperm['segmentation'][i] = segmentations_list[i][j]
+            sperm['visible'].append(1)
+
+            # Determine the sperm's properties in all subsequent frames
+            cur_index = j
+            for k in range(i+1, len(centroids_list)):
+                new_index = np.where(mappings[k-1] == cur_index)[0] # k-1 because their is one less mapping than centroids
+                if new_index.size != 0:
+                    cur_index = new_index[0]
+                    sperm['visible'].append(1)
+                    sperm['centroid'][k] = centroids_list[k][cur_index].tolist()
+                    sperm['bbox'][k] = bboxs_list[k][cur_index].tolist()
+                    sperm['area'][k] = areas_list[k][cur_index].tolist()
+                    sperm['segmentation'][k] = segmentations_list[k][cur_index]
+                else:
+                    # The sperm is no longer visible and is no longer tracked
+                    for _ in range(k, len(centroids_list)):
+                        sperm['visible'].append(0)
+                    break
+
+            all_sperm.append(sperm)
+    
+    return all_sperm
+
+
+
 def labelIm2Array(label_im, num_labels):
     segmentations = []
     for i in range(0, num_labels):
@@ -187,141 +329,123 @@ def makeSperm():
     return sperm
 
 
-#def where2Array(tuple):
-#    rows, cols = tuple
-#    return np.hstack((np.expand_dims(rows, axis=1), np.expand_dims(cols, axis=1)))
-
-# Get the segmentation for each label
-#segmentations = []
-#for i in range(0, len(stats)):
-#    segmentations.append(where2Array(np.where(label_im == i)))
-
-
 ### Main Code ###
+if __name__ == '__main__':
 
-parser = argparse.ArgumentParser(description='Track cells in a video')
-parser.add_argument('videofile', type=str, help='Path to the video file')
-parser.add_argument('SAM', type=int, default=0, help='Use SAM model for segmentation (1) or not (0)')
+    parser = argparse.ArgumentParser(description='Track cells in a video')
+    parser.add_argument('videofile', type=str, help='Path to the video file')
+    parser.add_argument('SAM', type=int, default=0, help='Use SAM model for segmentation (1) or not (0)')
 
-videofile = parser.parse_args().videofile
-use_SAM = bool(parser.parse_args().SAM)
+    videofile = parser.parse_args().videofile
+    use_SAM = bool(parser.parse_args().SAM)
 
-cap = cv.VideoCapture(videofile)
-
-# Read the first frame
-ret, first_frame = cap.read()
-
-if not ret:
-    raise ValueError('Error: Could not read the video file or video file could not be found')
-
-
-# Detect the cells in the first frame
-if use_SAM:
-    SAM_predictor = LoadSAMpredictor()
-    centroids, segmentations, bboxs, areas = detect_SAM(first_frame, SAM_predictor=SAM_predictor)
-else:
-    centroids, segmentations, bboxs, areas = detect(first_frame)
-
-# Create a lists for the whole video
-centroids_list = [centroids]
-segmentations_list = [segmentations]
-bboxs_list = [bboxs]
-areas_list = [areas]
-mappings = []
-
-# Loop through the video to generate mappings
-total_frame_count = int(cap.get(cv.CAP_PROP_FRAME_COUNT))
-pbar = tqdm(total=total_frame_count)
-
-while True:
-    # Read the next frame
-    ret, frame = cap.read()
-
-    # If the frame is None, then we have reached the end of the video
-    if frame is None:
-        break
-
-    # Detect the cells in the frame
+    # Detect the cells in the first frame
     if use_SAM:
-        centroids, segmentations, bboxs, areas = detect_SAM(frame, SAM_predictor=SAM_predictor)
+        SAM_predictor = LoadSAMpredictor()
+        centroids, segmentations, bboxs, areas = detect_SAM(first_frame, SAM_predictor=SAM_predictor)
     else:
-        centroids, segmentations, bboxs, areas = detect(frame)
+        centroids, segmentations, bboxs, areas = detect(first_frame)
 
-    # Track the cells
-    mapping = track(centroids_list[-1], centroids)
+    # Create a lists for the whole video
+    centroids_list = [centroids]
+    segmentations_list = [segmentations]
+    bboxs_list = [bboxs]
+    areas_list = [areas]
+    mappings = []
 
-    # Add the new centroids and properties to the lists
-    centroids_list.append(centroids)
-    segmentations_list.append(segmentations)
-    bboxs_list.append(bboxs)
-    areas_list.append(areas)
+    # Loop through the video to generate mappings
+    total_frame_count = int(cap.get(cv.CAP_PROP_FRAME_COUNT))
+    pbar = tqdm(total=total_frame_count)
 
-    mappings.append(mapping)
+    while True:
+        # Read the next frame
+        ret, frame = cap.read()
 
-    pbar.update(1)
+        # If the frame is None, then we have reached the end of the video
+        if frame is None:
+            break
 
-    if pbar.n == 10:
-        break
-
-# Close the video file
-cap.release()
-pbar.close()
-
-all_sperm = []
-
-# Process each individual sperm cell
-for i in trange(len(centroids_list)):
-    
-    num_sperm = len(centroids_list[i])
-
-    for j in range(num_sperm):
-        # Go through every sperm in the first frame
-        if i == 0:
-            sperm = makeSperm()
-        # Go through every newly discovered sperm in following frames
-        elif mappings[i-1][j] == -1:
-            sperm = makeSperm()
-            sperm['visible'] = [0] * i
-        # Don't double count previously discovered sperm
+        # Detect the cells in the frame
+        if use_SAM:
+            centroids, segmentations, bboxs, areas = detect_SAM(frame, SAM_predictor=SAM_predictor)
         else:
-            continue
+            centroids, segmentations, bboxs, areas = detect(frame)
 
-        # Add current frame properties
-        sperm['centroid'][i] = centroids_list[i][j].tolist()
-        sperm['bbox'][i] = bboxs_list[i][j].tolist()
-        sperm['area'][i] = areas_list[i][j].tolist()
-        sperm['segmentation'][i] = segmentations_list[i][j]
-        sperm['visible'].append(1)
+        # Track the cells
+        mapping = track(centroids_list[-1], centroids)
 
-        # Determine the sperm's properties in all subsequent frames
-        cur_index = j
-        for k in range(i+1, len(centroids_list)):
-            new_index = np.where(mappings[k-1] == cur_index)[0] # k-1 because their is one less mapping than centroids
-            if new_index.size != 0:
-                cur_index = new_index[0]
-                sperm['visible'].append(1)
-                sperm['centroid'][k] = centroids_list[k][cur_index].tolist()
-                sperm['bbox'][k] = bboxs_list[k][cur_index].tolist()
-                sperm['area'][k] = areas_list[k][cur_index].tolist()
-                sperm['segmentation'][k] = segmentations_list[k][cur_index]
+        # Add the new centroids and properties to the lists
+        centroids_list.append(centroids)
+        segmentations_list.append(segmentations)
+        bboxs_list.append(bboxs)
+        areas_list.append(areas)
+
+        mappings.append(mapping)
+
+        pbar.update(1)
+
+        if pbar.n == 10:
+            break
+
+    # Close the video file
+    cap.release()
+    pbar.close()
+
+    all_sperm = []
+
+    # Process each individual sperm cell
+    for i in trange(len(centroids_list)):
+        
+        num_sperm = len(centroids_list[i])
+
+        for j in range(num_sperm):
+            # Go through every sperm in the first frame
+            if i == 0:
+                sperm = makeSperm()
+            # Go through every newly discovered sperm in following frames
+            elif mappings[i-1][j] == -1:
+                sperm = makeSperm()
+                sperm['visible'] = [0] * i
+            # Don't double count previously discovered sperm
             else:
-                # The sperm is no longer visible and is no longer tracked
-                for _ in range(k, len(centroids_list)):
-                    sperm['visible'].append(0)
-                break
+                continue
 
-        all_sperm.append(sperm)
-                
+            # Add current frame properties
+            sperm['centroid'][i] = centroids_list[i][j].tolist()
+            sperm['bbox'][i] = bboxs_list[i][j].tolist()
+            sperm['area'][i] = areas_list[i][j].tolist()
+            sperm['segmentation'][i] = segmentations_list[i][j]
+            sperm['visible'].append(1)
+
+            # Determine the sperm's properties in all subsequent frames
+            cur_index = j
+            for k in range(i+1, len(centroids_list)):
+                new_index = np.where(mappings[k-1] == cur_index)[0] # k-1 because their is one less mapping than centroids
+                if new_index.size != 0:
+                    cur_index = new_index[0]
+                    sperm['visible'].append(1)
+                    sperm['centroid'][k] = centroids_list[k][cur_index].tolist()
+                    sperm['bbox'][k] = bboxs_list[k][cur_index].tolist()
+                    sperm['area'][k] = areas_list[k][cur_index].tolist()
+                    sperm['segmentation'][k] = segmentations_list[k][cur_index]
+                else:
+                    # The sperm is no longer visible and is no longer tracked
+                    for _ in range(k, len(centroids_list)):
+                        sperm['visible'].append(0)
+                    break
+
+            all_sperm.append(sperm)
+                    
 
 
-# Save sperm data to pickle file
-outputfile = videofile.split('.')[0] + '_tracked.pkl'
-with open(outputfile, 'wb') as f:
-    pickle.dump(all_sperm, f)
+    # Save sperm data to pickle file
+    outputfile = videofile.split('.')[0] + '_tracked.pkl'
+    with open(outputfile, 'wb') as f:
+        pickle.dump(all_sperm, f)
 
-# Save sperm data to json file
-#outputfile = videofile.split('.')[0] + '_tracked.json'
-#with open(outputfile, 'w') as f:
-#    json.dump(all_sperm, f)
+    # Save sperm data to json file
+    #outputfile = videofile.split('.')[0] + '_tracked.json'
+    #with open(outputfile, 'w') as f:
+    #    json.dump(all_sperm, f)
 
-print(outputfile,' file saved')
+    print(outputfile,' file saved')
