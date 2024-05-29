@@ -37,7 +37,7 @@ def detect(frame, kernel_size=(3,3)):
     """
     
     # Find centroids by focusing on heads
-    bw = threshold(frame, method='global', global_thresh=50)
+    bw = threshold(frame, method='otsu')
     kernel = np.ones(kernel_size,np.uint8)
     bw = cv.morphologyEx(bw, cv.MORPH_OPEN, kernel)
     _, _, _, centroids = cv.connectedComponentsWithStats(bw, 4, cv.CV_32S) 
@@ -58,8 +58,6 @@ def detect(frame, kernel_size=(3,3)):
 
     # Turn label_im into list of segmentations
     segmentations = labelIm2Array(label_im, len(stats))
-
-    print(centroids.shape)
 
     # Associate centroids with correct segmentations
     del_indices = []
