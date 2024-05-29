@@ -100,6 +100,37 @@ def curvilinearVelocity(centroids, visible, pix_size, fps=5):
     print(f"Velocity: {velocity}")
     return velocity
 
+def straightLineVelocity(centroids, visible, pix_size, fps=5):
+    '''
+    Calculate the straight line velocity (VCL).
+
+    Arguments:
+    centroids -- List of (x, y) tuples representing the coordinates of centroids.
+    visible -- List of integers (0 or 1) indicating visibility at each frame.
+    pix_size -- Size of a pixel in microns.
+    fps -- Frames per second, default is 5.
+    '''
+
+    # Find frame count (n), starting with -1 so that we have n-1 for the calculation
+    valid_frame_count = len(visible) - 1
+
+    # Find the first and last visible frame indices
+    start_index = next((i for i, v in enumerate(visible) if v == 1), None)
+    end_index = next((i for i, v in reversed(list(enumerate(visible))) if v == 1), None)
+
+    # Ensure we have valid start and end indices
+    if start_index is None or end_index is None or start_index == end_index or valid_frame_count <= 0:
+        return 0
+
+    # Calculate the straight line distance between the first and last visible points
+    start = centroids[start_index]
+    end = centroids[end_index]
+    straight_line_distance = np.sqrt((end[1] - start[1]) ** 2 + (end[0] - start[0]) ** 2)
+
+    # Calculate the straight line velocity (VCL) in microns per second
+    velocity = straight_line_distance * (fps/valid_frame_count) * pix_size
+
+    return velocity
 
 
 parser = argparse.ArgumentParser(description='Compute statistics about sperm cells')
@@ -119,10 +150,14 @@ for i in range(len(data)):
     centroids = data[i]['centroid']
     visible = data[i]['visible']
 
-    average_speed = averagePathVelocity(centroids, visible, 0.26, 2)
+    vap = averagePathVelocity(centroids, visible, 0.26, 2)
+    vsl = straightLineVelocity(centroids, visible, 0.26)
 
     stats[i] = {}
-    stats[i]["VAP"] = average_speed
+    stats[i]["VAP"] = vap
+    stats[i]["VSL"] = vsl
+
+
 
 # Find the maximum average speed
 #max_speed = max(stats[i]["average_speed"] for i in stats)
