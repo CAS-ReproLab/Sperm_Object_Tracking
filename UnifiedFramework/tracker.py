@@ -7,6 +7,7 @@ import json
 import argparse
 from tqdm import tqdm, trange
 
+
 def detect(frame, centroid_thresh=50, segment_thresh=40, kernel_size=(3,3)):
     """
     Detects cells in a frame
@@ -104,7 +105,7 @@ def track(prev_centroids, centroids, thresh=10):
 
     return mapping
 
-def trackVideo(videofile):
+def processVideo(videofile):
 
     cap = cv.VideoCapture(videofile)
 
@@ -123,7 +124,6 @@ def trackVideo(videofile):
     segmentations_list = [segmentations]
     bboxs_list = [bboxs]
     areas_list = [areas]
-    mappings = []
 
     # Loop through the video to generate mappings
     total_frame_count = int(cap.get(cv.CAP_PROP_FRAME_COUNT))
@@ -137,19 +137,11 @@ def trackVideo(videofile):
         if frame is None:
             break
 
-        # Detect the cells in the frame
-        centroids, segmentations, bboxs, areas = detect(frame)
-
-        # Track the cells
-        mapping = track(centroids_list[-1], centroids)
-
         # Add the new centroids and properties to the lists
         centroids_list.append(centroids)
         segmentations_list.append(segmentations)
         bboxs_list.append(bboxs)
         areas_list.append(areas)
-
-        mappings.append(mapping)
 
         pbar.update(1)
 
@@ -157,31 +149,19 @@ def trackVideo(videofile):
     cap.release()
     pbar.close()
 
-    return generateTrackingData(mappings, centroids_list, segmentations_list, bboxs_list, areas_list)
+    return centroids_list, segmentations_list, bboxs_list, areas_list
 
+def trackCentroids(centroids_list):
 
-def labelIm2Array(label_im, num_labels):
-    segmentations = []
-    for i in range(0, num_labels):
-        segmentations.append([])
+    # Create a list to store the mappings
+    mappings = []
 
-    rows, cols = label_im.shape
-    for i in range(rows):
-        for j in range(cols):
-            if label_im[i,j] != -1:
-                segmentations[label_im[i,j]].append([i,j])
+    # Loop through the video to generate mappings
+    for i in trange(1, len(centroids_list)):
+        mapping = track(centroids_list[i-1], centroids_list[i])
+        mappings.append(mapping)
 
-    return segmentations
-
-def makeSperm():
-    sperm = {}
-    sperm['centroid'] = {}
-    sperm['bbox'] = {} 
-    sperm['area'] = {}
-    sperm['segmentation'] = {}
-    sperm['visible'] = []
-
-    return sperm
+    return mappings
 
 def generateTrackingData(mappings, centroids_list, segmentations_list, bboxs_list, areas_list):
 
@@ -233,6 +213,31 @@ def generateTrackingData(mappings, centroids_list, segmentations_list, bboxs_lis
     return all_sperm
 
 
+
+def labelIm2Array(label_im, num_labels):
+    segmentations = []
+    for i in range(0, num_labels):
+        segmentations.append([])
+
+    rows, cols = label_im.shape
+    for i in range(rows):
+        for j in range(cols):
+            if label_im[i,j] != -1:
+                segmentations[label_im[i,j]].append([i,j])
+
+    return segmentations
+
+def makeSperm():
+    sperm = {}
+    sperm['centroid'] = {}
+    sperm['bbox'] = {} 
+    sperm['area'] = {}
+    sperm['segmentation'] = {}
+    sperm['visible'] = []
+
+    return sperm
+
+
 ### Main Code ###
 if __name__ == '__main__':
 
@@ -241,7 +246,9 @@ if __name__ == '__main__':
 
     videofile = parser.parse_args().videofile
 
-    all_sperm = trackVideo(videofile) 
+    centroids_list, segmentations_list, bboxs_list, areas_list = processVideo(videofile)
+    mappings = trackCentroids(centroids_list)
+    all_sperm = generateTrackingData(mappings, centroids_list, segmentations_list, bboxs_list, areas_list)
 
     # Save sperm data to pickle file
     outputfile = videofile.split('.')[0] + '_tracked.pkl'
