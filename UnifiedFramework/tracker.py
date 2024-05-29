@@ -8,20 +8,42 @@ import argparse
 from tqdm import tqdm, trange
 
 
-def detect(frame, centroid_thresh=50, segment_thresh=40, kernel_size=(3,3)):
+def threshold(frame, method='otsu',global_thresh=50):
+    
+    gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+    #mid_val = np.median(gray)
+    #gray = np.abs(gray - mid_val).astype(np.uint8)
+
+    if method == 'global':
+        _, bw = cv.threshold(gray,global_thresh,255,cv.THRESH_BINARY)
+    elif method == 'otsu':
+        _, bw = cv.threshold(gray,0,255,cv.THRESH_BINARY+cv.THRESH_OTSU)
+    elif method == 'adaptive':
+        bw = cv.adaptiveThreshold(gray,255,cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY,11,-2)
+    elif method == 'hybrid':
+        _, bw1 = cv.threshold(gray,0,255,cv.THRESH_BINARY+cv.THRESH_OTSU)
+
+        bw2 = cv.adaptiveThreshold(gray,255,cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY,11,-2)
+        bw = cv.bitwise_or(bw1,bw2)
+    else:
+        raise ValueError('Invalid thresholding method')
+    
+    return bw
+
+
+def detect(frame, kernel_size=(3,3)):
     """
     Detects cells in a frame
     """
     
     # Find centroids by focusing on heads
-    gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
-    _, bw = cv.threshold(gray,centroid_thresh,255,cv.THRESH_BINARY)
+    bw = threshold(frame, method='global', global_thresh=50)
     kernel = np.ones(kernel_size,np.uint8)
     bw = cv.morphologyEx(bw, cv.MORPH_OPEN, kernel)
     _, _, _, centroids = cv.connectedComponentsWithStats(bw, 4, cv.CV_32S) 
 
     # Run connected components again with a lower threshold to get the segmentation
-    _, bw2 = cv.threshold(gray,segment_thresh,255,cv.THRESH_BINARY)
+    bw2 = threshold(frame, method='hybrid')
     _, label_im, stats, _ = cv.connectedComponentsWithStats(bw2, 4, cv.CV_32S)
 
     # Seperate bbox from area
