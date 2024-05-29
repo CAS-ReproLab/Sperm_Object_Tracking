@@ -70,6 +70,8 @@ def runInteractive(videofile,trackdata,statsdata=None):
 
         if current_sperm is not None:
             sperm = trackdata[current_sperm]
+
+            # Display the bounding box
             if sperm["visible"][frame_num] == 1:
                 bbox = sperm['bbox'][frame_num]
                 x = int(bbox[0])
@@ -77,6 +79,17 @@ def runInteractive(videofile,trackdata,statsdata=None):
                 w = int(bbox[2])
                 h = int(bbox[3])
                 img = cv.rectangle(img, (x, y), (x + w, y + h), (0, 128, 0), 3)
+
+            # Output text properties
+            font = cv.FONT_HERSHEY_SIMPLEX
+            org = (50, 50)
+            fontScale = 1
+            color = (255, 0, 0)
+            thickness = 2
+            text1 = f'Sperm {current_sperm}'
+            text2 = f'Average Speed: {statsdata[current_sperm]["average_speed"]:.2f} pixels/s'
+            img = cv.putText(img, text1, org, font, fontScale, color, thickness, cv.LINE_AA)
+            img = cv.putText(img, text2, (org[0], org[1]+50), font, fontScale, color, thickness, cv.LINE_AA)
 
         cv.imshow('Interactive', img)
 
