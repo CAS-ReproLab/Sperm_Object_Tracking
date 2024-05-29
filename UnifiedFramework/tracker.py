@@ -104,6 +104,62 @@ def track(prev_centroids, centroids, thresh=10):
 
     return mapping
 
+def trackVideo(videofile):
+
+    cap = cv.VideoCapture(videofile)
+
+    # Read the first frame
+    ret, first_frame = cap.read()
+
+    if not ret:
+        raise ValueError('Error: Could not read the video file or video file could not be found')
+
+
+    # Detect the cells in the first frame
+    centroids, segmentations, bboxs, areas = detect(first_frame)
+
+    # Create a lists for the whole video
+    centroids_list = [centroids]
+    segmentations_list = [segmentations]
+    bboxs_list = [bboxs]
+    areas_list = [areas]
+    mappings = []
+
+    # Loop through the video to generate mappings
+    total_frame_count = int(cap.get(cv.CAP_PROP_FRAME_COUNT))
+    pbar = tqdm(total=total_frame_count)
+
+    while True:
+        # Read the next frame
+        ret, frame = cap.read()
+
+        # If the frame is None, then we have reached the end of the video
+        if frame is None:
+            break
+
+        # Detect the cells in the frame
+        centroids, segmentations, bboxs, areas = detect(frame)
+
+        # Track the cells
+        mapping = track(centroids_list[-1], centroids)
+
+        # Add the new centroids and properties to the lists
+        centroids_list.append(centroids)
+        segmentations_list.append(segmentations)
+        bboxs_list.append(bboxs)
+        areas_list.append(areas)
+
+        mappings.append(mapping)
+
+        pbar.update(1)
+
+    # Close the video file
+    cap.release()
+    pbar.close()
+
+    return generateTrackingData(mappings, centroids_list, segmentations_list, bboxs_list, areas_list)
+
+
 def labelIm2Array(label_im, num_labels):
     segmentations = []
     for i in range(0, num_labels):
@@ -127,130 +183,74 @@ def makeSperm():
 
     return sperm
 
+def generateTrackingData(mappings, centroids_list, segmentations_list, bboxs_list, areas_list):
 
-#def where2Array(tuple):
-#    rows, cols = tuple
-#    return np.hstack((np.expand_dims(rows, axis=1), np.expand_dims(cols, axis=1)))
+    all_sperm = []
 
-# Get the segmentation for each label
-#segmentations = []
-#for i in range(0, len(stats)):
-#    segmentations.append(where2Array(np.where(label_im == i)))
+    # Process each individual sperm cell
+    for i in trange(len(centroids_list)):
+        
+        num_sperm = len(centroids_list[i])
+
+        for j in range(num_sperm):
+            # Go through every sperm in the first frame
+            if i == 0:
+                sperm = makeSperm()
+            # Go through every newly discovered sperm in following frames
+            elif mappings[i-1][j] == -1:
+                sperm = makeSperm()
+                sperm['visible'] = [0] * i
+            # Don't double count previously discovered sperm
+            else:
+                continue
+
+            # Add current frame properties
+            sperm['centroid'][i] = centroids_list[i][j].tolist()
+            sperm['bbox'][i] = bboxs_list[i][j].tolist()
+            sperm['area'][i] = areas_list[i][j].tolist()
+            sperm['segmentation'][i] = segmentations_list[i][j]
+            sperm['visible'].append(1)
+
+            # Determine the sperm's properties in all subsequent frames
+            cur_index = j
+            for k in range(i+1, len(centroids_list)):
+                new_index = np.where(mappings[k-1] == cur_index)[0] # k-1 because their is one less mapping than centroids
+                if new_index.size != 0:
+                    cur_index = new_index[0]
+                    sperm['visible'].append(1)
+                    sperm['centroid'][k] = centroids_list[k][cur_index].tolist()
+                    sperm['bbox'][k] = bboxs_list[k][cur_index].tolist()
+                    sperm['area'][k] = areas_list[k][cur_index].tolist()
+                    sperm['segmentation'][k] = segmentations_list[k][cur_index]
+                else:
+                    # The sperm is no longer visible and is no longer tracked
+                    for _ in range(k, len(centroids_list)):
+                        sperm['visible'].append(0)
+                    break
+
+            all_sperm.append(sperm)
+    
+    return all_sperm
 
 
 ### Main Code ###
+if __name__ == '__main__':
 
-parser = argparse.ArgumentParser(description='Track cells in a video')
-parser.add_argument('videofile', type=str, help='Path to the video file')
+    parser = argparse.ArgumentParser(description='Track cells in a video')
+    parser.add_argument('videofile', type=str, help='Path to the video file')
 
-videofile = parser.parse_args().videofile
+    videofile = parser.parse_args().videofile
 
-cap = cv.VideoCapture(videofile)
+    all_sperm = trackVideo(videofile) 
 
-# Read the first frame
-ret, first_frame = cap.read()
+    # Save sperm data to pickle file
+    outputfile = videofile.split('.')[0] + '_tracked.pkl'
+    with open(outputfile, 'wb') as f:
+        pickle.dump(all_sperm, f)
 
-if not ret:
-    raise ValueError('Error: Could not read the video file or video file could not be found')
+    # Save sperm data to json file
+    #outputfile = videofile.split('.')[0] + '_tracked.json'
+    #with open(outputfile, 'w') as f:
+    #    json.dump(all_sperm, f)
 
-
-# Detect the cells in the first frame
-centroids, segmentations, bboxs, areas = detect(first_frame)
-
-# Create a lists for the whole video
-centroids_list = [centroids]
-segmentations_list = [segmentations]
-bboxs_list = [bboxs]
-areas_list = [areas]
-mappings = []
-
-# Loop through the video to generate mappings
-total_frame_count = int(cap.get(cv.CAP_PROP_FRAME_COUNT))
-pbar = tqdm(total=total_frame_count)
-
-while True:
-    # Read the next frame
-    ret, frame = cap.read()
-
-    # If the frame is None, then we have reached the end of the video
-    if frame is None:
-        break
-
-    # Detect the cells in the frame
-    centroids, segmentations, bboxs, areas = detect(frame)
-
-    # Track the cells
-    mapping = track(centroids_list[-1], centroids)
-
-    # Add the new centroids and properties to the lists
-    centroids_list.append(centroids)
-    segmentations_list.append(segmentations)
-    bboxs_list.append(bboxs)
-    areas_list.append(areas)
-
-    mappings.append(mapping)
-
-    pbar.update(1)
-
-# Close the video file
-cap.release()
-pbar.close()
-
-all_sperm = []
-
-# Process each individual sperm cell
-for i in trange(len(centroids_list)):
-    
-    num_sperm = len(centroids_list[i])
-
-    for j in range(num_sperm):
-        # Go through every sperm in the first frame
-        if i == 0:
-            sperm = makeSperm()
-        # Go through every newly discovered sperm in following frames
-        elif mappings[i-1][j] == -1:
-            sperm = makeSperm()
-            sperm['visible'] = [0] * i
-        # Don't double count previously discovered sperm
-        else:
-            continue
-
-        # Add current frame properties
-        sperm['centroid'][i] = centroids_list[i][j].tolist()
-        sperm['bbox'][i] = bboxs_list[i][j].tolist()
-        sperm['area'][i] = areas_list[i][j].tolist()
-        sperm['segmentation'][i] = segmentations_list[i][j]
-        sperm['visible'].append(1)
-
-        # Determine the sperm's properties in all subsequent frames
-        cur_index = j
-        for k in range(i+1, len(centroids_list)):
-            new_index = np.where(mappings[k-1] == cur_index)[0] # k-1 because their is one less mapping than centroids
-            if new_index.size != 0:
-                cur_index = new_index[0]
-                sperm['visible'].append(1)
-                sperm['centroid'][k] = centroids_list[k][cur_index].tolist()
-                sperm['bbox'][k] = bboxs_list[k][cur_index].tolist()
-                sperm['area'][k] = areas_list[k][cur_index].tolist()
-                sperm['segmentation'][k] = segmentations_list[k][cur_index]
-            else:
-                # The sperm is no longer visible and is no longer tracked
-                for _ in range(k, len(centroids_list)):
-                    sperm['visible'].append(0)
-                break
-
-        all_sperm.append(sperm)
-                
-
-
-# Save sperm data to pickle file
-outputfile = videofile.split('.')[0] + '_tracked.pkl'
-with open(outputfile, 'wb') as f:
-    pickle.dump(all_sperm, f)
-
-# Save sperm data to json file
-#outputfile = videofile.split('.')[0] + '_tracked.json'
-#with open(outputfile, 'w') as f:
-#    json.dump(all_sperm, f)
-
-print(outputfile,' file saved')
+    print(outputfile,' file saved')
