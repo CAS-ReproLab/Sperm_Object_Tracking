@@ -125,7 +125,7 @@ def colorMap(frame, trackdata, statsdata, frame_num):
     mask = np.zeros_like(frame)
 
     # Extract average speeds from statsdata
-    speeds = [statsdata[i]['VAP'] for i in range(len(statsdata) - 1)]  # Exclude 'max_average_speed'
+    speeds = [statsdata[i]['VSL'] for i in range(len(statsdata) - 1)]  # Exclude 'max_average_speed'
 
     # Define a small threshold to consider as static
     static_threshold = 0.5  # Adjust this value as needed
@@ -135,7 +135,7 @@ def colorMap(frame, trackdata, statsdata, frame_num):
     normalized_speeds = [speed / max_speed_value for speed in speeds]
 
     # Get a colormap from matplotlib
-    colormap = cm.get_cmap('tab20b')
+    colormap = cm.get_cmap('tab20b', len(normalized_speeds))
 
     # Map normalized speeds to colors using the colormap
     sperm_colors = []
