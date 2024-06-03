@@ -267,3 +267,5 @@ while(1):
 result_vid.release()
 
 cv.destroyAllWindows()
+
+print("hello")
