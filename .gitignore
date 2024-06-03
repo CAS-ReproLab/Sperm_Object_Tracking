@@ -14,7 +14,6 @@ __pycache__/
 *.czi
 *.json
 *.pkl
-*.pth
 
 .DS_Store
 
