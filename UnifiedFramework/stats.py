@@ -46,11 +46,7 @@ def averagePathVelocity(centroids, visible, pix_size, win_size, fps=5):
             end = centroids[i]
             distance = sqrt((end[1] - start[1]) ** 2 + (end[0] - start[0]) ** 2)
             total_distance += distance
-            print(f"Distance from {start} to {end}: {distance}")
-
-
-    print(f"Total distance: {total_distance}")
-
+            
     # Calculate total number of frames minus the window size
     frame_window_rate = valid_frame_count - win_size
 
@@ -60,7 +56,6 @@ def averagePathVelocity(centroids, visible, pix_size, win_size, fps=5):
     else:
         velocity = 0
 
-    print(f"Velocity: {velocity}")
     return velocity
 
 
@@ -86,9 +81,6 @@ def curvilinearVelocity(centroids, visible, pix_size, fps=5):
             distance = sqrt((end[1] - start[1]) ** 2 + (end[0] - start[0]) ** 2)
             total_distance += distance
             valid_frame_count += 1
-            print(f"Distance from {start} to {end}: {distance}")
-
-    print(f"Total distance: {total_distance}")
 
 
     if valid_frame_count > 0:
