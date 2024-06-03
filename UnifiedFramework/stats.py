@@ -172,3 +172,5 @@ with open(outputfile, 'wb') as f:
     pickle.dump(stats, f)
 
 print(f'Saved statistics to {outputfile}')
+
+print('Testing 1 2 3')
