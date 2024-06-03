@@ -268,4 +268,3 @@ result_vid.release()
 
 cv.destroyAllWindows()
 
-print("hello")

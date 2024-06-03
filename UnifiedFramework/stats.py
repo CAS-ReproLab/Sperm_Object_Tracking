@@ -173,4 +173,3 @@ with open(outputfile, 'wb') as f:
 
 print(f'Saved statistics to {outputfile}')
 
-print('Testing 1 2 3')
