@@ -46,7 +46,7 @@ def averagePathVelocity(centroids, visible, pix_size, win_size, fps=5):
             end = centroids[i]
             distance = sqrt((end[1] - start[1]) ** 2 + (end[0] - start[0]) ** 2)
             total_distance += distance
-            
+
     # Calculate total number of frames minus the window size
     frame_window_rate = valid_frame_count - win_size
 
