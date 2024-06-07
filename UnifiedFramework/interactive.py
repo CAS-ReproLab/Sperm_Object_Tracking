@@ -6,37 +6,39 @@ import numpy as np
 import cv2 as cv
 import time
 
+import utils
+
 current_sperm = None
 
 def onMouse(event, x, y, flags, param):
 
     global current_sperm
 
-    trackdata = param[0]
+    data = param[0]
     frame_num = param[1]
 
     if event == cv.EVENT_LBUTTONDOWN:
-        for i,sperm in enumerate(trackdata):
-            if sperm["visible"][frame_num] == 1:
-                curr = sperm['bbox'][frame_num]
-                x1 = curr[0]
-                y1 = curr[1]
-                x2 = curr[0] + curr[2]
-                y2 = curr[1] + curr[3]
-                if x >= x1 and x <= x2 and y >= y1 and y <= y2:
-                    print(f'Sperm {i} clicked')
-                    current_sperm = i
-                    break
 
-                #curr = sperm['centroid'][frame_num]
-                #dist = np.sqrt((curr[0]-x)**2 + (curr[1]-y)**2)
-                #if dist < 5:
-                #    print(f'Sperm {i} clicked')
-                #    current_sperm = i
+        # Get only data for the current frame
+        current = data[data['frame'] == frame_num]
 
-def runInteractive(videofile,trackdata,statsdata=None):
+        for idx, sperm in current.iterrows():
+
+            i = sperm['sperm']
+            x1 = sperm['bbox_x']
+            y1 = sperm['bbox_y']
+            x2 = sperm['bbox_x'] + sperm['bbox_w']
+            y2 = sperm['bbox_y'] + sperm['bbox_h']
+
+            if x >= x1 and x <= x2 and y >= y1 and y <= y2:
+                print(f'Sperm {i} clicked')
+                current_sperm = i
+                break
+
+def runInteractive(videofile, data):
 
     global current_sperm
+    global average_speed
 
     # Open the video file
     cap = cv.VideoCapture(videofile)
@@ -49,7 +51,8 @@ def runInteractive(videofile,trackdata,statsdata=None):
     wait_time = 1/30
 
     # Create some random colors
-    num_sperm = len(trackdata)
+    num_sperm = data['sperm'].nunique()
+    max_index = data['sperm'].max()
 
     frame_num = 0
 
@@ -66,19 +69,24 @@ def runInteractive(videofile,trackdata,statsdata=None):
 
         img = frame
 
-        cv.setMouseCallback('Interactive', onMouse, [trackdata,frame_num])
+        cv.setMouseCallback('Interactive', onMouse, [data,frame_num])
+
+        # Get only data for the current frame
+        current = data[data['frame'] == frame_num]
+
+        sperm = current[current['sperm'] == current_sperm]
+        if len(sperm) > 0:
+            sperm = sperm.iloc[0] # Fail safe for duplicate sperm ids
+            x = int(sperm['bbox_x'])
+            y = int(sperm['bbox_y'])
+            w = int(sperm['bbox_w'])
+            h = int(sperm['bbox_h'])
+            img = cv.rectangle(img, (x, y), (x + w, y + h), (0, 128, 0), 3)
+
+            average_speed = sperm['average_speed']
+
 
         if current_sperm is not None:
-            sperm = trackdata[current_sperm]
-
-            # Display the bounding box
-            if sperm["visible"][frame_num] == 1:
-                bbox = sperm['bbox'][frame_num]
-                x = int(bbox[0])
-                y = int(bbox[1])
-                w = int(bbox[2])
-                h = int(bbox[3])
-                img = cv.rectangle(img, (x, y), (x + w, y + h), (0, 128, 0), 3)
 
             # Output text properties
             font = cv.FONT_HERSHEY_SIMPLEX
@@ -87,9 +95,10 @@ def runInteractive(videofile,trackdata,statsdata=None):
             color = (255, 0, 0)
             thickness = 2
             text1 = f'Sperm {current_sperm}'
-            text2 = f'Average Speed: {statsdata[current_sperm]["average_speed"]:.2f} pixels/s'
+            text2 = f'Average Speed: {average_speed:.2f} pixels/s'
             img = cv.putText(img, text1, org, font, fontScale, color, thickness, cv.LINE_AA)
             img = cv.putText(img, text2, (org[0], org[1]+50), font, fontScale, color, thickness, cv.LINE_AA)
+
 
         cv.imshow('Interactive', img)
 
@@ -106,24 +115,13 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Show the tracked cells in a video')
     parser.add_argument('videofile', type=str, help='Path to the video file')
+    parser.add_argument('csvfile', type=str, help='Path to the csvfile')
 
     videofile = parser.parse_args().videofile
+    csvfile = parser.parse_args().csvfile
 
-    trackfile = videofile.split('.')[0] + '_tracked.pkl'
-    statsfile = videofile.split('.')[0] + '_stats.pkl'
-
-    # Load the pkl files
-    if os.path.exists(trackfile):
-        with open(trackfile, 'rb') as f:
-            trackdata = pickle.load(f)
-    else:
-        trackdata = None
-
-    if os.path.exists(statsfile):
-        with open(statsfile, 'rb') as f:
-            statsdata = pickle.load(f)
-    else:
-        statsdata = None
+    # Load dataframe
+    dataframe = utils.loadDataFrame(csvfile,convert_segmentation=False)
     
-    runInteractive(videofile,trackdata,statsdata)
+    runInteractive(videofile,dataframe)
     

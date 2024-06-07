@@ -25,11 +25,14 @@ def loadVideo(videofile, as_gray=False):
     frames = np.array(frames)
     return frames
 
-def loadDataFrame(filename):
+def loadDataFrame(filename, convert_segmentation=False):
     data = pd.read_csv(filename)
 
     # Convert the string representation of segmentation to a list
-    data['segmentation'] = data['segmentation'].apply(ast.literal_eval)
+    if convert_segmentation:
+        print("Converting segmentations to list...")
+        data['segmentation'] = data['segmentation'].apply(ast.literal_eval)
+        print("Done.")
 
     return data
 

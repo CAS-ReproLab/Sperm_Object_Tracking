@@ -152,8 +152,13 @@ if __name__ == '__main__':
     videofile = parser.parse_args().videofile
     csvfile = parser.parse_args().csvfile
 
+    if visualization == "segments" or visualization == "coloring":
+        convert_segs = True
+    else:
+        convert_segs = False
+
     # Load dataframe
-    dataframe = utils.loadDataFrame(csvfile)
+    dataframe = utils.loadDataFrame(csvfile,convert_segmentation=convert_segs)
 
     savefile = parser.parse_args().output
     if savefile is None:
