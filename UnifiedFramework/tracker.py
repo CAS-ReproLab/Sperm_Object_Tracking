@@ -50,7 +50,7 @@ def threshold(frame, method='otsu',global_thresh=50):
 def determineCentroids_morphology(frames, kernel_size=(3,3)):
 
     # Make dataframe to store centroids
-    f = pd.DataFrame(columns=['x', 'y', 'frame'])
+    f = pd.DataFrame(columns=['y', 'x', 'frame'])
 
     # Find centroids by focusing on heads
     for i in trange(len(frames)):
@@ -67,7 +67,7 @@ def determineCentroids_morphology(frames, kernel_size=(3,3)):
 
         # Add centroids to dataframe
         for centroid in centroids:
-            f.loc[len(f.index)] = [centroid[0], centroid[1], i]
+            f.loc[len(f.index)] = [centroid[1], centroid[0], i]
 
     return f
 
@@ -81,6 +81,8 @@ def trackCentroids(f, search_range=7, memory=3):
 
     # Change the column name of particle to sperm
     t = t.rename(columns={'particle': 'sperm'})
+
+    t = t.reset_index(drop=True)
 
     return t
 
@@ -133,14 +135,11 @@ def segmentCells(frames, t):
 
     # For each row of the dataframe, associate the correct segmentation, area, and bounding box
     out_indices = 0
-    for row in tqdm(final.iterrows()):
+    for idx, row in final.iterrows():
 
-        # row[0] is the index
-        # row[1] is the actual data
-
-        n = row[1]['frame']
-        x = row[1]['x']
-        y = row[1]['y']
+        n = row['frame']
+        x = row['x']
+        y = row['y']
 
         r,c = int(y),int(x)
         if r < 0 or c < 0 or r >= label_im.shape[0] or c >= label_im.shape[1]:
@@ -168,19 +167,23 @@ def segmentCells(frames, t):
         if label == -1:
             #print("\n Warning: Centroid found in background")
             out_indices += 1
+            final.at[idx,'area'] = -1
+            final.at[idx,'bbox_x'] = -1
+            final.at[idx,'bbox_y'] = -1
+            final.at[idx,'bbox_w'] = -1
+            final.at[idx,'bbox_h'] = -1
+            final.at[idx,'segmentation'] = []
             #del_indices.append(i)
             continue
 
-        #print(all_segmentations[n][label])
+        bbox = all_bboxs[n][label]
 
-        final.at[row[0],'area'] = all_areas[n][label]
-        final.at[row[0],'bbox_x'] = all_bboxs[n][label][0]
-        final.at[row[0],'bbox_y'] = all_bboxs[n][label][1]
-        final.at[row[0],'bbox_w'] = all_bboxs[n][label][2]
-        final.at[row[0],'bbox_h'] = all_bboxs[n][label][3]
-        
-        final.at[row[0],'segmentation'] = all_segmentations[n][label]
-
+        final.at[idx,'area'] = all_areas[n][label]
+        final.at[idx,'bbox_x'] = bbox[0]
+        final.at[idx,'bbox_y'] = bbox[1]
+        final.at[idx,'bbox_w'] = bbox[2]
+        final.at[idx,'bbox_h'] = bbox[3]
+        final.at[idx,'segmentation'] = all_segmentations[n][label]
         
     print("Warning:", out_indices, "centroids found in background in", len(frames), "frames")
 
@@ -193,8 +196,9 @@ def processVideo(videofile):
     frames = utils.loadVideo(videofile,as_gray=True)
 
     # Determine the centroids info
+    #f = determineCentroids_morphology(frames)
     f = determineCentroids(frames)
-    
+
     # Track the centroids
     t = trackCentroids(f)
 

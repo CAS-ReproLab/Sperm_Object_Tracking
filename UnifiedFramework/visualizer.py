@@ -14,10 +14,10 @@ def opticalFlow(frame,data,frame_num,mask,colors):
     prev = data[data['frame'] == frame_num-1]
 
     # Iterate over the sperm
-    for sperm in current.iterrows():
-        i = sperm[1]['sperm']
-        x = int(sperm[1]['x'])
-        y = int(sperm[1]['y'])
+    for row_idx, sperm in current.iterrows():
+        i = sperm['sperm']
+        x = int(sperm['x'])
+        y = int(sperm['y'])
         prev_sperm = prev[prev['sperm'] == i]
         if len(prev_sperm) > 0:
             prev_sperm = prev_sperm.iloc[0] # Fail safe for duplicate sperm ids
@@ -46,11 +46,11 @@ def boundingBoxes(frame,data,frame_num):
     current = data[data['frame'] == frame_num]
 
     # Iterate over the sperm
-    for sperm in current.iterrows():
-        x = int(sperm[1]['bbox_x'])
-        y = int(sperm[1]['bbox_y'])
-        w = int(sperm[1]['bbox_w'])
-        h = int(sperm[1]['bbox_h'])
+    for row_idx, sperm in current.iterrows():
+        x = int(sperm['bbox_x'])
+        y = int(sperm['bbox_y'])
+        w = int(sperm['bbox_w'])
+        h = int(sperm['bbox_h'])
         mask = cv.rectangle(mask, (x, y), (x + w, y + h), (0, 128, 0), 3)
 
     img = cv.add(frame, mask)
@@ -64,9 +64,10 @@ def coloring(frame,data,frame_num,colors):
     # Get only data for the current frame
     current = data[data['frame'] == frame_num]
 
-    for sperm in current.iterrows():
-        i = sperm[1]['sperm']
-        segm = sperm[1]['segmentation']
+    for row_idx, sperm in current.iterrows():
+        i = sperm['sperm']
+        segm = sperm['segmentation']
+
         if segm is not None:
             segm = np.array(segm)
             color = colors[i]

@@ -9,6 +9,8 @@ from tqdm import tqdm, trange
 
 import pandas as pd
 
+import ast
+
 def loadVideo(videofile, as_gray=False):
     cap = cv.VideoCapture(videofile)
     frames = []
@@ -24,7 +26,12 @@ def loadVideo(videofile, as_gray=False):
     return frames
 
 def loadDataFrame(filename):
-    return pd.read_csv(filename)
+    data = pd.read_csv(filename)
+
+    # Convert the string representation of segmentation to a list
+    data['segmentation'] = data['segmentation'].apply(ast.literal_eval)
+
+    return data
 
 def saveDataFrame(df, filename):
     df.to_csv(filename, index=False)

@@ -24,6 +24,9 @@ def calcAverageSpeed(data, fps=30):
         # Filter the dataframe
         sperm = data[data['sperm'] == i]
 
+        # Sort the dataframe by frame
+        sperm = sperm.sort_values(by='frame')
+
         # Calculate the average speed for each sperm
         count = len(sperm) - 1
         total = 0
