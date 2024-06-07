@@ -5,56 +5,53 @@ import pickle
 import argparse
 from math import sqrt
 
-def calcAverageSpeed(centroids, visible, fps=30):
+import utils
+
+def calcAverageSpeed(data, fps=30):
     """
     Calculate the average speed of a sperm cell
     """
-    count = sum(visible) -1
-    total = 0
+    # Add a column to the dataframe to store the average speed
+    data['average_speed'] = 0.0
 
-    if count == 0:
-        return 0
+    # Determine the number of sperm
+    sperm_count = data['sperm'].nunique()
 
-    for i in range(len(visible)):
-        if visible[i] == 1 and visible[i-1] == 1 and i-1 >= 0:
-            start = centroids[i-1]
-            end = centroids[i]
+    # Determine the number of frames
+    frames = data['frame'].nunique()
+
+    for i in range(sperm_count):
+        # Filter the dataframe
+        sperm = data[data['sperm'] == i]
+
+        # Calculate the average speed for each sperm
+        count = len(sperm) - 1
+        total = 0
+        for j in range(1, len(sperm)):
+            start = (sperm['x'].iloc[j-1], sperm['y'].iloc[j-1])
+            end = (sperm['x'].iloc[j], sperm['y'].iloc[j])
             total += sqrt((end[1]-start[1])**2 + (end[0]-start[0])**2)
+        
+        # Calculate the average speed
+        average_speed = (total/count)/fps
 
-    # Calculate the average speed
-    average_speed = (total/count)/fps
+        # Add the average speed to the dataframe
+        data.loc[data['sperm'] == i, 'average_speed'] = average_speed
 
-    return average_speed
-
+    return data
 
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Compute statistics about sperm cells')
-    parser.add_argument('pklfile', type=str, help='Path to the tracker pkl file')
+    parser.add_argument('csvfile', type=str, help='Path to the tracker csv file')
 
-    pklfile = parser.parse_args().pklfile
+    csvfile = parser.parse_args().csvfile
 
-    # Load the json file
-    with open(pklfile, 'rb') as f:
-        data = pickle.load(f)
+    data = utils.loadDataFrame(csvfile)
 
-    stats = {}
+    # Run calcAverageSpeed
+    average_speed = calcAverageSpeed(data)
 
-    # Calculate each statstic for each sperm
-    for i in range(len(data)):
-        # Get the centroids
-        centroids = data[i]['centroid']
-        visible = data[i]['visible']
+    # Save the new data file with the statistics
+    utils.saveDataFrame(average_speed, csvfile.split('.')[0] + '_withstats.csv')
 
-        average_speed = calcAverageSpeed(centroids,visible)
-
-        stats[i] = {}
-        stats[i]["average_speed"] = average_speed
-
-    # Save the stats to a json file
-    outputfile = pklfile.split('.')[0][:-8] + '_stats.pkl'
-
-    with open(outputfile, 'wb') as f:
-        pickle.dump(stats, f)
-
-    print(f'Saved statistics to {outputfile}')

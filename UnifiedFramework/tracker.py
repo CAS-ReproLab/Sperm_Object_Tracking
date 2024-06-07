@@ -53,7 +53,7 @@ def determineCentroids_morphology(frames, kernel_size=(3,3)):
     f = pd.DataFrame(columns=['x', 'y', 'frame'])
 
     # Find centroids by focusing on heads
-    for i in range(len(frames)):
+    for i in trange(len(frames)):
         frame = frames[i]
 
         # Find centroids by focusing on heads
@@ -92,9 +92,12 @@ def segmentCells(frames, t):
     final = t.copy(deep=True)
 
     # Add new columns for segmentations, areas, and bounding boxes
-    final['segmentation'] = None
     final['area'] = 0
-    final['bbox'] = None
+    final['bbox_x'] = 0
+    final['bbox_y'] = 0
+    final['bbox_w'] = 0
+    final['bbox_h'] = 0
+    final['segmentation'] = None
 
     # Initialize the labels_ims (whether frames is list or numpy array)
     all_label_ims = np.zeros((len(frames), frames[0].shape[0], frames[0].shape[1]), dtype=np.int32)
@@ -130,7 +133,11 @@ def segmentCells(frames, t):
 
     # For each row of the dataframe, associate the correct segmentation, area, and bounding box
     out_indices = 0
-    for row in final.iterrows():
+    for row in tqdm(final.iterrows()):
+
+        # row[0] is the index
+        # row[1] is the actual data
+
         n = row[1]['frame']
         x = row[1]['x']
         y = row[1]['y']
@@ -162,11 +169,18 @@ def segmentCells(frames, t):
             #print("\n Warning: Centroid found in background")
             out_indices += 1
             #del_indices.append(i)
-            continue 
+            continue
+
+        #print(all_segmentations[n][label])
 
         final.at[row[0],'area'] = all_areas[n][label]
-        final.at[row[0],'bbox'] = all_bboxs[n][label].tolist()
+        final.at[row[0],'bbox_x'] = all_bboxs[n][label][0]
+        final.at[row[0],'bbox_y'] = all_bboxs[n][label][1]
+        final.at[row[0],'bbox_w'] = all_bboxs[n][label][2]
+        final.at[row[0],'bbox_h'] = all_bboxs[n][label][3]
+        
         final.at[row[0],'segmentation'] = all_segmentations[n][label]
+
         
     print("Warning:", out_indices, "centroids found in background in", len(frames), "frames")
 
@@ -176,7 +190,7 @@ def segmentCells(frames, t):
 def processVideo(videofile):
 
     # Open the video file
-    frames = utils.loadVideo(videofile)
+    frames = utils.loadVideo(videofile,as_gray=True)
 
     # Determine the centroids info
     f = determineCentroids(frames)
@@ -188,9 +202,6 @@ def processVideo(videofile):
     final = segmentCells(frames, t)
 
     return final
-
-def saveDataFrame(df, filename):
-    df.to_csv(filename, index=False)
 
 def labelIm2Array(label_im, num_labels):
     segmentations = []
@@ -205,16 +216,6 @@ def labelIm2Array(label_im, num_labels):
 
     return segmentations
 
-def makeSperm():
-    sperm = {}
-    sperm['centroid'] = {}
-    sperm['bbox'] = {} 
-    sperm['area'] = {}
-    sperm['segmentation'] = {}
-    sperm['visible'] = []
-
-    return sperm
-
 
 ### Main Code ###
 if __name__ == '__main__':
@@ -226,16 +227,6 @@ if __name__ == '__main__':
 
     final = processVideo(videofile)
 
-    saveDataFrame(final, videofile.split('.')[0] + '_tracked.csv')
-
-    # Save sperm data to pickle file
-    #outputfile = videofile.split('.')[0] + '_tracked.pkl'
-    #with open(outputfile, 'wb') as f:
-    #    pickle.dump(all_sperm, f)
-
-    # Save sperm data to json file
-    #outputfile = videofile.split('.')[0] + '_tracked.json'
-    #with open(outputfile, 'w') as f:
-    #    json.dump(all_sperm, f)
+    utils.saveDataFrame(final, videofile.split('.')[0] + '_tracked.csv')
 
     print(outputfile,' file saved')
