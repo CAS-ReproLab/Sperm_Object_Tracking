@@ -56,5 +56,9 @@ if __name__ == '__main__':
     average_speed = calcAverageSpeed(data)
 
     # Save the new data file with the statistics
-    utils.saveDataFrame(average_speed, csvfile.split('.')[0] + '_withstats.csv')
+    outputfile = csvfile.split('.')[0] + '_withstats.csv'
+
+    utils.saveDataFrame(average_speed, outputfile)
+
+    print("Statistics computed and saved to", outputfile)
 

@@ -231,6 +231,8 @@ if __name__ == '__main__':
 
     final = processVideo(videofile)
 
-    utils.saveDataFrame(final, videofile.split('.')[0] + '_tracked.csv')
+    outputfile = videofile.split('.')[0] + '_tracked.csv'
 
-    print(outputfile,' file saved')
+    utils.saveDataFrame(final, outputfile)
+
+    print(outputfile, 'file saved')
