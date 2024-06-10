@@ -7,76 +7,153 @@ import json
 import argparse
 from tqdm import tqdm, trange
 
+import trackpy as tp
+import utils
 
-def threshold(frame, method='otsu', global_thresh=50):
-    gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
-    # mid_val = np.median(gray)
-    # gray = np.abs(gray - mid_val).astype(np.uint8)
+import pandas as pd
+
+#import pims
+#@pims.pipeline
+#def as_grey(frame):
+#    return cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+
+#def load_video(videofile):
+#    print(videofile)
+#    return as_grey(pims.open(videofile))
+
+def threshold(frame, method='otsu',global_thresh=50):
+    
+    # Check if the frame is grayscale
+    if len(frame.shape) == 3:
+        frame = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+
+    #mid_val = np.median(gray)
+    #gray = np.abs(gray - mid_val).astype(np.uint8)
 
     if method == 'global':
-        _, bw = cv.threshold(gray, global_thresh, 255, cv.THRESH_BINARY)
+        _, bw = cv.threshold(frame,global_thresh,255,cv.THRESH_BINARY)
     elif method == 'otsu':
-        _, bw = cv.threshold(gray, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)
+        _, bw = cv.threshold(frame,0,255,cv.THRESH_BINARY+cv.THRESH_OTSU)
     elif method == 'adaptive':
-        bw = cv.adaptiveThreshold(gray, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 11, -2)
+        bw = cv.adaptiveThreshold(frame,255,cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY,11,-2)
     elif method == 'hybrid':
-        _, bw1 = cv.threshold(gray, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)
+        _, bw1 = cv.threshold(frame,0,255,cv.THRESH_BINARY+cv.THRESH_OTSU)
 
-        bw2 = cv.adaptiveThreshold(gray, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 11, -2)
-        bw = cv.bitwise_or(bw1, bw2)
+        bw2 = cv.adaptiveThreshold(frame,255,cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY,11,-2)
+        bw = cv.bitwise_or(bw1,bw2)
     else:
         raise ValueError('Invalid thresholding method')
-
+    
     return bw
 
 
-def detect(frame, kernel_size=(3, 3)):
-    """
-    Detects cells in a frame
-    """
+def determineCentroids_morphology(frames, kernel_size=(3,3)):
+
+    # Make dataframe to store centroids
+    f = pd.DataFrame(columns=['y', 'x', 'frame'])
 
     # Find centroids by focusing on heads
-    bw = threshold(frame, method='otsu')
-    kernel = np.ones(kernel_size, np.uint8)
-    bw = cv.morphologyEx(bw, cv.MORPH_OPEN, kernel)
-    _, _, _, centroids = cv.connectedComponentsWithStats(bw, 4, cv.CV_32S)
+    for i in trange(len(frames)):
+        frame = frames[i]
 
-    # Run connected components again with a lower threshold to get the segmentation
-    bw2 = threshold(frame, method='hybrid')
-    _, label_im, stats, _ = cv.connectedComponentsWithStats(bw2, 4, cv.CV_32S)
+        # Find centroids by focusing on heads
+        bw = threshold(frame, method='otsu')
+        kernel = np.ones(kernel_size,np.uint8)
+        bw = cv.morphologyEx(bw, cv.MORPH_OPEN, kernel)
+        _, _, _, centroids = cv.connectedComponentsWithStats(bw, 4, cv.CV_32S) 
 
-    # Seperate bbox from area
-    areas = stats[:, 4]
-    bboxs = stats[:, 0:4]
+        # Filter out the background (always index 0)
+        centroids = centroids[1:]
 
-    # Filter out the background (always index 0)
-    areas = areas[1:]
-    bboxs = bboxs[1:]
-    centroids = centroids[1:]
-    label_im -= 1
+        # Add centroids to dataframe
+        for centroid in centroids:
+            f.loc[len(f.index)] = [centroid[1], centroid[0], i]
 
-    # Turn label_im into list of segmentations
-    segmentations = labelIm2Array(label_im, len(stats))
+    return f
 
-    # Associate centroids with correct segmentations
-    del_indices = []
-    new_segmentations = []
-    new_areas = np.zeros(len(centroids), dtype=np.int32)
-    new_bboxs = np.zeros((len(centroids), 4), dtype=np.int32)
-    for i, centroid in enumerate(centroids):
-        r, c = int(centroid[1]), int(centroid[0])
+def determineCentroids(frames, diameter=11, minmass=500):
+    f = tp.batch(frames, diameter=diameter, minmass=minmass)
+    return f
+
+def trackCentroids(f, search_range=7, memory=3):
+    t = tp.link(f, search_range, memory=memory)
+    t = tp.filter_stubs(t, 15)
+
+    # Change the column name of particle to sperm
+    t = t.rename(columns={'particle': 'sperm'})
+
+    t = t.reset_index(drop=True)
+
+    return t
+
+def segmentCells(frames, t):
+    """
+    Segment full sperm cells in each frame using the centroids and adaptive thresholding
+    """
+
+    final = t.copy(deep=True)
+
+    # Add new columns for segmentations, areas, and bounding boxes
+    final['area'] = 0
+    final['bbox_x'] = 0
+    final['bbox_y'] = 0
+    final['bbox_w'] = 0
+    final['bbox_h'] = 0
+    final['segmentation'] = None
+
+    # Initialize the labels_ims (whether frames is list or numpy array)
+    all_label_ims = np.zeros((len(frames), frames[0].shape[0], frames[0].shape[1]), dtype=np.int32)
+
+    # Generate all lists of segmentations, areas, and bounding boxes
+    all_bboxs = []
+    all_areas = []
+    all_segmentations = []
+    for n in trange(len(frames)):
+        frame = frames[n]
+
+        # Run connected components again with a lower threshold to get the segmentation
+        bw2 = threshold(frame, method='hybrid')
+        _, label_im, stats, _ = cv.connectedComponentsWithStats(bw2, 4, cv.CV_32S)
+
+        # Seperate bbox from area
+        areas = stats[:,4]
+        bboxs = stats[:,0:4]
+
+        # Filter out the background (always index 0)
+        areas = areas[1:]
+        bboxs = bboxs[1:]
+        label_im -= 1
+
+        # Turn label_im into list of segmentations
+        segmentations = labelIm2Array(label_im, len(stats))
+
+        all_label_ims[n] = label_im
+        all_bboxs.append(bboxs)
+        all_areas.append(areas)
+        all_segmentations.append(segmentations)
+
+
+    # For each row of the dataframe, associate the correct segmentation, area, and bounding box
+    out_indices = 0
+    for idx, row in final.iterrows():
+
+        n = row['frame']
+        x = row['x']
+        y = row['y']
+
+        r,c = int(y),int(x)
         if r < 0 or c < 0 or r >= label_im.shape[0] or c >= label_im.shape[1]:
             print("Warning: Centroid found out of bounds")
             continue
 
-        # Check the label of the four surrounding pixels
-        r2 = r + 1 if r + 1 < label_im.shape[0] else r
-        c2 = c + 1 if c + 1 < label_im.shape[1] else c
-        label_tl = label_im[r, c]
-        label_tr = label_im[r, c2]
-        label_bl = label_im[r2, c]
-        label_br = label_im[r2, c2]
-
+        # Check the label of the four surrounding pixels    
+        r2 = r+1 if r+1 < label_im.shape[0] else r
+        c2 = c+1 if c+1 < label_im.shape[1] else c
+        label_tl = all_label_ims[n,r,c]
+        label_tr = all_label_ims[n,r,c2]
+        label_bl = all_label_ims[n,r2,c]
+        label_br = all_label_ims[n,r2,c2]
+        
         if label_tl >= 0:
             label = label_tl
         elif label_tr >= 0:
@@ -88,160 +165,47 @@ def detect(frame, kernel_size=(3, 3)):
             # TODO: Check mode of the four labels if they are greater than 1
 
         if label == -1:
-            print("\n Warning: Centroid found in background")
-            del_indices.append(i)
+            #print("\n Warning: Centroid found in background")
+            out_indices += 1
+            final.at[idx,'area'] = -1
+            final.at[idx,'bbox_x'] = -1
+            final.at[idx,'bbox_y'] = -1
+            final.at[idx,'bbox_w'] = -1
+            final.at[idx,'bbox_h'] = -1
+            final.at[idx,'segmentation'] = []
+            #del_indices.append(i)
             continue
 
-        new_segmentations.append(segmentations[label])
-        new_areas[i] = areas[label]
-        new_bboxs[i] = bboxs[label]
+        bbox = all_bboxs[n][label]
 
-    # TODO Filter out crossing labels
+        final.at[idx,'area'] = all_areas[n][label]
+        final.at[idx,'bbox_x'] = bbox[0]
+        final.at[idx,'bbox_y'] = bbox[1]
+        final.at[idx,'bbox_w'] = bbox[2]
+        final.at[idx,'bbox_h'] = bbox[3]
+        final.at[idx,'segmentation'] = all_segmentations[n][label]
+        
+    print("Warning:", out_indices, "centroids found in background in", len(frames), "frames")
 
-    # Remove centroids that were found in the background
-    if len(del_indices) > 0:
-        centroids = np.delete(centroids, del_indices, axis=0)
-
-    return centroids, new_segmentations, new_bboxs, new_areas
-
-
-def track(prev_centroids, centroids, thresh=10):
-    # Get the number of centroids
-    num_centroids = centroids.shape[0]
-    num_prev_centroids = prev_centroids.shape[0]
-
-    # Fill in the cost matrix
-    jv, iv = np.meshgrid(np.arange(num_centroids), np.arange(num_prev_centroids))
-    cost_matrix = np.linalg.norm(centroids[jv] - prev_centroids[iv], axis=2)
-
-    # Conceptually, the above code is equivalent to the following:
-    # cost_matrix = np.zeros((num_prev_centroids,num_centroids))
-    # for i in range(num_prev_centroids):
-    #    for j in range(num_centroids):
-    #        cost_matrix[i,j] = np.linalg.norm(centroids[j] - prev_centroids[i])
-
-    # Solve the assignment problem wiht Hungarian algorithm
-    row_ind, col_ind = linear_sum_assignment(cost_matrix)
-
-    # Make mapping from previous centroids to current centroids (or -1 if no match)
-    mapping = np.zeros(num_centroids).astype(np.int64) - 1
-
-    for r, c in zip(row_ind, col_ind):
-        if cost_matrix[r, c] < thresh:
-            mapping[c] = r
-
-    return mapping
+    return final
 
 
 def processVideo(videofile):
-    cap = cv.VideoCapture(videofile)
 
-    # Read the first frame
-    ret, first_frame = cap.read()
+    # Open the video file
+    frames = utils.loadVideo(videofile,as_gray=True)
 
-    if not ret:
-        raise ValueError('Error: Could not read the video file or video file could not be found')
+    # Determine the centroids info
+    #f = determineCentroids_morphology(frames)
+    f = determineCentroids(frames)
 
-    # Detect the cells in the first frame
-    centroids, segmentations, bboxs, areas = detect(first_frame)
+    # Track the centroids
+    t = trackCentroids(f)
 
-    # Create a lists for the whole video
-    centroids_list = [centroids]
-    segmentations_list = [segmentations]
-    bboxs_list = [bboxs]
-    areas_list = [areas]
+    # Segment the cells
+    final = segmentCells(frames, t)
 
-    # Loop through the video to generate mappings
-    total_frame_count = int(cap.get(cv.CAP_PROP_FRAME_COUNT))
-    pbar = tqdm(total=total_frame_count)
-
-    while True:
-        # Read the next frame
-        ret, frame = cap.read()
-
-        # If the frame is None, then we have reached the end of the video
-        if frame is None:
-            break
-
-        # Detect the cells in the frame
-        centroids, segmentations, bboxs, areas = detect(frame)
-
-        # Add the new centroids and properties to the lists
-        centroids_list.append(centroids)
-        segmentations_list.append(segmentations)
-        bboxs_list.append(bboxs)
-        areas_list.append(areas)
-
-        pbar.update(1)
-
-    # Close the video file
-    cap.release()
-    pbar.close()
-
-    return centroids_list, segmentations_list, bboxs_list, areas_list
-
-
-def trackCentroids(centroids_list):
-    # Create a list to store the mappings
-    mappings = []
-
-    # Loop through the video to generate mappings
-    for i in trange(1, len(centroids_list)):
-        mapping = track(centroids_list[i - 1], centroids_list[i])
-        mappings.append(mapping)
-
-    return mappings
-
-
-def generateTrackingData(mappings, centroids_list, segmentations_list, bboxs_list, areas_list):
-    all_sperm = []
-
-    # Process each individual sperm cell
-    for i in trange(len(centroids_list)):
-
-        num_sperm = len(centroids_list[i])
-
-        for j in range(num_sperm):
-            # Go through every sperm in the first frame
-            if i == 0:
-                sperm = makeSperm()
-            # Go through every newly discovered sperm in following frames
-            elif mappings[i - 1][j] == -1:
-                sperm = makeSperm()
-                sperm['visible'] = [0] * i
-            # Don't double count previously discovered sperm
-            else:
-                continue
-
-            # Add current frame properties
-            sperm['centroid'][i] = centroids_list[i][j].tolist()
-            sperm['bbox'][i] = bboxs_list[i][j].tolist()
-            sperm['area'][i] = areas_list[i][j].tolist()
-            sperm['segmentation'][i] = segmentations_list[i][j]
-            sperm['visible'].append(1)
-
-            # Determine the sperm's properties in all subsequent frames
-            cur_index = j
-            for k in range(i + 1, len(centroids_list)):
-                new_index = np.where(mappings[k - 1] == cur_index)[
-                    0]  # k-1 because their is one less mapping than centroids
-                if new_index.size != 0:
-                    cur_index = new_index[0]
-                    sperm['visible'].append(1)
-                    sperm['centroid'][k] = centroids_list[k][cur_index].tolist()
-                    sperm['bbox'][k] = bboxs_list[k][cur_index].tolist()
-                    sperm['area'][k] = areas_list[k][cur_index].tolist()
-                    sperm['segmentation'][k] = segmentations_list[k][cur_index]
-                else:
-                    # The sperm is no longer visible and is no longer tracked
-                    for _ in range(k, len(centroids_list)):
-                        sperm['visible'].append(0)
-                    break
-
-            all_sperm.append(sperm)
-
-    return all_sperm
-
+    return final
 
 def labelIm2Array(label_im, num_labels):
     segmentations = []
@@ -251,42 +215,24 @@ def labelIm2Array(label_im, num_labels):
     rows, cols = label_im.shape
     for i in range(rows):
         for j in range(cols):
-            if label_im[i, j] != -1:
-                segmentations[label_im[i, j]].append([i, j])
+            if label_im[i,j] != -1:
+                segmentations[label_im[i,j]].append([i,j])
 
     return segmentations
 
 
-def makeSperm():
-    sperm = {}
-    sperm['centroid'] = {}
-    sperm['bbox'] = {}
-    sperm['area'] = {}
-    sperm['segmentation'] = {}
-    sperm['visible'] = []
-
-    return sperm
-
-
 ### Main Code ###
 if __name__ == '__main__':
+
     parser = argparse.ArgumentParser(description='Track cells in a video')
     parser.add_argument('videofile', type=str, help='Path to the video file')
 
     videofile = parser.parse_args().videofile
 
-    centroids_list, segmentations_list, bboxs_list, areas_list = processVideo(videofile)
-    mappings = trackCentroids(centroids_list)
-    all_sperm = generateTrackingData(mappings, centroids_list, segmentations_list, bboxs_list, areas_list)
+    final = processVideo(videofile)
 
-    # Save sperm data to pickle file
-    outputfile = videofile.split('.')[0] + '_tracked.pkl'
-    with open(outputfile, 'wb') as f:
-        pickle.dump(all_sperm, f)
+    outputfile = videofile.split('.')[0] + '_tracked.csv'
 
-    # Save sperm data to json file
-    # outputfile = videofile.split('.')[0] + '_tracked.json'
-    # with open(outputfile, 'w') as f:
-    #    json.dump(all_sperm, f)
+    utils.saveDataFrame(final, outputfile)
 
-    print(outputfile, ' file saved')
+    print(outputfile, 'file saved')

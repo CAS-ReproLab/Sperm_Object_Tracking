@@ -4,267 +4,165 @@ import json
 import pickle
 import numpy as np
 import cv2 as cv
-import matplotlib.pyplot as plt
-from matplotlib import cm
 
+import utils
 
-def opticalFlow(frame,trackdata,frame_num,mask,colors):
+def opticalFlow(frame,data,frame_num,mask,colors):
 
-    for i,sperm in enumerate(trackdata):
-        if sperm["visible"][frame_num] == 1 and sperm["visible"][frame_num-1] == 1:
-            curr = sperm['centroid'][frame_num]
-            prev = sperm['centroid'][frame_num-1]
-            #curr = sperm['centroid'][str(frame_num)] # .json
-            #prev = sperm['centroid'][str(frame_num-1)] #.json
+     # Get data for the current frame and previous frame
+    current = data[data['frame'] == frame_num]
+    prev = data[data['frame'] == frame_num-1]
 
-            mask = cv.line(mask, (int(prev[0]), int(prev[1])), (int(curr[0]), int(curr[1])), colors[i].tolist(), 2)
-            frame = cv.circle(frame, (int(curr[0]), int(curr[1])), 5, colors[i].tolist(), -1)
+    # Iterate over the sperm
+    for row_idx, sperm in current.iterrows():
+        i = sperm['sperm']
+        x = int(sperm['x'])
+        y = int(sperm['y'])
+        prev_sperm = prev[prev['sperm'] == i]
+        if len(prev_sperm) > 0:
+            prev_sperm = prev_sperm.iloc[0] # Fail safe for duplicate sperm ids
+            prev_x = int(prev_sperm['x'])
+            prev_y = int(prev_sperm['y'])
+
+            # Verify everything is in bounds
+            #x = min(max(x, 0), frame.shape[1])
+            #y = min(max(y, 0), frame.shape[0])
+            #prev_x = min(max(prev_x, 0), frame.shape[1])
+            #prev_y = min(max(prev_y, 0), frame.shape[0])
+
+            # Draw
+            mask = cv.line(mask, (prev_x, prev_y), (x, y), colors[i].tolist(), 2)
+            mask = cv.circle(mask, (x, y), 2, colors[i].tolist(), -1)
+
     img = cv.add(frame, mask)
 
     return img
 
-def boundingBoxes(frame,trackdata,frame_num):
+def boundingBoxes(frame,data,frame_num):
     
     mask = np.zeros_like(frame)
 
-    for sperm in trackdata:
-        if sperm["visible"][frame_num] == 1:
-            bbox = sperm['bbox'][frame_num] # .pkl
-            # bbox = sperm['bbox'][str(frame_num)]  # .json
-            x = int(bbox[0])
-            y = int(bbox[1])
-            w = int(bbox[2])
-            h = int(bbox[3])
-            mask = cv.rectangle(mask, (x, y), (x + w, y + h), (0, 128, 0), 3)
+    # Get only data for the current frame
+    current = data[data['frame'] == frame_num]
+
+    # Iterate over the sperm
+    for row_idx, sperm in current.iterrows():
+        x = int(sperm['bbox_x'])
+        y = int(sperm['bbox_y'])
+        w = int(sperm['bbox_w'])
+        h = int(sperm['bbox_h'])
+        mask = cv.rectangle(mask, (x, y), (x + w, y + h), (0, 128, 0), 3)
+
     img = cv.add(frame, mask)
 
     return img
 
-def coloring(frame,trackdata,frame_num,colors):
+def coloring(frame,data,frame_num,colors):
 
     mask = np.zeros_like(frame)
 
-    for i,sperm in enumerate(trackdata):
-        if sperm["visible"][frame_num] == 1:
-            segm = np.array(sperm['segmentation'][frame_num]) # .pkl
-            #segm = np.array(sperm['segmentation'][str(frame_num)]) # .json
+    # Get only data for the current frame
+    current = data[data['frame'] == frame_num]
+
+    for row_idx, sperm in current.iterrows():
+        i = sperm['sperm']
+        segm = sperm['segmentation']
+
+        if segm is not None:
+            segm = np.array(segm)
             color = colors[i]
-            mask[segm[:,0],segm[:,1]] = color
+            if len(segm) > 0:
+                mask[segm[:,0],segm[:,1]] = color
+
     img = cv.add(frame, mask)
 
     return img
 
+def runVisualization(videofile, data, visualization="flow",savefile=None):
 
-def colorSpeed(frame, trackdata, statsdata, frame_num):
-    mask = np.zeros_like(frame)
+    # Open the video file
+    cap = cv.VideoCapture(videofile)
 
-    # Define specific colors for each speed category
-    color_static = np.array([255, 0, 0], dtype=np.uint8)  # Red for static
-    color_slow = np.array([128, 0, 128], dtype=np.uint8)  # Purple for slow
-    color_medium = np.array([0, 255, 0], dtype=np.uint8)  # Green for medium
-    color_fast = np.array([0, 0, 255], dtype=np.uint8)  # Blue for fast
+    # Capture the first frame
+    width = cap.get(cv.CAP_PROP_FRAME_WIDTH )
+    height = cap.get(cv.CAP_PROP_FRAME_HEIGHT )
+    fps =  cap.get(cv.CAP_PROP_FPS)
 
-    # Extract average speeds from statsdata
-    speeds = [statsdata[i]['VAP'] for i in range(len(statsdata) - 1)]  # Exclude 'max_average_speed'
+    # Create a video writer
+    if savefile is not None:
+        result_vid = cv.VideoWriter(savefile,cv.VideoWriter_fourcc(*'mp4v'),10,(int(width),int(height)))
 
-    # Get max_average_speed from statsdata
-    #max_speed = statsdata["max_average_speed"]
-
-    # Normalize the speeds for visualization
-    max_speed_value = max(speeds)
-    normalized_speeds = [speed / max_speed_value * 255 for speed in speeds]
-
-    # Apply convertScaleAbs to emphasize the highest speeds
-    abs_speeds = cv.convertScaleAbs(np.array(normalized_speeds, dtype=np.float32))
-
-    # Calculate speed thresholds based on percentiles
-    # Static is the lower 25% since they move slightly
-    static_threshold = np.percentile(abs_speeds, 25)
-    slow_threshold = np.percentile(abs_speeds, 50)
-    medium_threshold = np.percentile(abs_speeds, 75)
-
-    # Determine the color for each sperm based on its max average speed
-    sperm_colors = []
-    for speed in abs_speeds:
-        if speed <= static_threshold:
-            color = color_static  # Red for static
-            # category = "static"
-        elif static_threshold < speed <= slow_threshold:
-            color = color_slow  # Purple for slow
-            # category = "slow"
-        elif slow_threshold < speed <= medium_threshold:
-            color = color_medium  # Green for medium
-            # category = "medium"
-        else:
-            color = color_fast
-            # category = "fast"
-
-        sperm_colors.append(color)
-        # print(f"Sperm speed: {speed}, Category: {category}, Color: {color}")
-
-    # Assign colors based on speed and apply to mask where visible and segmented
-    for i, sperm in enumerate(trackdata):
-        if sperm["visible"][frame_num] == 1:
-            segm = np.array(sperm['segmentation'][frame_num])
-
-            if segm.ndim != 2 or segm.shape[1] != 2:
-                print(f"Invalid segmentation data format at frame {frame_num} for sperm index {i}")
-                continue  # Skip this entry
-
-            # Use precomputed color for this sperm
-            color = sperm_colors[i]
-            mask[segm[:, 0], segm[:, 1]] = color
-
-    # Combine original frame with mask
-    img = cv.add(frame, mask)
-
-    return img
-
-
-def colorMap(frame, trackdata, statsdata, frame_num):
-    mask = np.zeros_like(frame)
-
-    # Extract average speeds from statsdata
-    speeds = [statsdata[i]['VSL'] for i in range(len(statsdata) - 1)]  # Exclude 'max_average_speed'
-
-    # Define a small threshold to consider as static
-    static_threshold = 0.5  # Adjust this value as needed
-
-    # Normalize the speeds for visualization
-    max_speed_value = max(speeds)
-    normalized_speeds = [speed / max_speed_value for speed in speeds]
-
-    # Get a colormap from matplotlib
-    colormap = cm.get_cmap('tab20b', len(normalized_speeds))
-
-    # Map normalized speeds to colors using the colormap
-    sperm_colors = []
-    for speed in normalized_speeds:
-        if speed < static_threshold / max_speed_value:  # Handle static sperm
-            color = np.array([255, 0, 0], dtype=np.uint8)  # Red for static
-        else:
-            color = (np.array(colormap(speed)[:3]) * 255).astype(np.uint8)  # Get RGB values
-        sperm_colors.append(color)
-
-    # Assign colors based on speed and apply to mask where visible and segmented
-    for i, sperm in enumerate(trackdata):
-        if sperm["visible"][frame_num] == 1:
-            segm = np.array(sperm['segmentation'][frame_num])
-
-            if segm.ndim != 2 or segm.shape[1] != 2:
-                print(f"Invalid segmentation data format at frame {frame_num} for sperm index {i}")
-                continue  # Skip this entry
-
-            # Use precomputed color for this sperm
-            color = sperm_colors[i]
-            mask[segm[:, 0], segm[:, 1]] = color
-
-    # Combine original frame with mask
-    img = cv.add(frame, mask)
-
-    return img
-
-
-parser = argparse.ArgumentParser(description='Show the tracked cells in a video')
-parser.add_argument('visualization', type=str, help='Type of visualization to create')
-parser.add_argument('videofile', type=str, help='Path to the video file')
-
-visualization = parser.parse_args().visualization
-videofile = parser.parse_args().videofile
-
-trackfile = videofile.split('.')[0] + '_tracked.pkl'
-statsfile = videofile.split('.')[0] + '_stats.pkl'
-
-#trackfile = videofile.split('.')[0] + '_tracked.json'
-#statsfile = videofile.split('.')[0] + '_stats.json'
-
-# Load the pkl files
-if os.path.exists(trackfile):
-    with open(trackfile, 'rb') as f:
-        trackdata = pickle.load(f)
-else:
-    trackdata = None
-
-if os.path.exists(statsfile):
-    with open(statsfile, 'rb') as f:
-        statsdata = pickle.load(f)
-else:
-    statsdata = None
-
-# Load the json files
-#if os.path.exists(trackfile):
-#    with open(trackfile, 'r') as f:
-#        trackdata = json.load(f)
-#else:
-#    trackdata = None
-
-#if os.path.exists(statsfile):
-#    with open(statsfile, 'r') as f:
-#        statsdata = json.load(f)
-#else:
-#    statsdata = None
-
-# Open the video file
-cap = cv.VideoCapture(videofile)
-
-# Capture the first frame
-width = cap.get(cv.CAP_PROP_FRAME_WIDTH )
-height = cap.get(cv.CAP_PROP_FRAME_HEIGHT )
-fps =  cap.get(cv.CAP_PROP_FPS)
-
-# Create a video writer
-result_vid = cv.VideoWriter("output_" + visualization + ".mp4",cv.VideoWriter_fourcc(*'mp4v'),fps,(int(width),int(height)))
-
-# Create some random colors
-num_sperm = len(trackdata)
-colors = np.random.randint(0, 255, (num_sperm, 3))
-
-if visualization == "flow":
-    ret, frame = cap.read()
-    if not ret:
-        raise Exception("Failed to read the first frame.")
-    # Create a mask image for drawing purposes
-    mask = np.zeros_like(frame)
-    frame_num = 1
-else:
-    frame_num = 0
-
-
-while(1):
-    ret, frame = cap.read()
-    if not ret:
-        print("Video Finished.")
-        break
+    # Create some random colors
+    num_sperm = data['sperm'].nunique()
+    max_index = data['sperm'].max()
+    colors = np.random.randint(0, 255, (max_index+1, 3))
 
     if visualization == "flow":
-        img = opticalFlow(frame,trackdata,frame_num,mask,colors)
+        ret, frame = cap.read()
+        # Create a mask image for drawing purposes
+        mask = np.zeros_like(frame)
+        frame_num = 1
+    else:
+        frame_num = 0
 
-    elif visualization == "bbox":
-        img = boundingBoxes(frame,trackdata,frame_num)
+    while(1):
+        ret, frame = cap.read()
+        if not ret:
+            print("Video Finished.")
+            break
 
-    elif visualization == "segments":
-        img = coloring(frame,trackdata,frame_num,colors)
+        if visualization == "flow":
+            img = opticalFlow(frame,data,frame_num,mask,colors)
 
-    elif visualization == "speed":
-        img = colorSpeed(frame, trackdata, statsdata, frame_num)
+        elif visualization == "bbox":
+            img = boundingBoxes(frame,data,frame_num)
 
-    elif visualization == "map":
-        img = colorMap(frame, trackdata, statsdata, frame_num)
+        elif visualization == "segments" or visualization == "coloring":
+            img = coloring(frame,data,frame_num,colors)
 
-    elif visualization == "original":
-        img = frame
+        elif visualization == "original":
+            img = frame
+        else:
+            raise ValueError("Unknown visualization type")
 
-    bgr_img = cv.cvtColor(img, cv.COLOR_RGB2BGR)
-    result_vid.write(bgr_img)
+        if savefile is not None:
+            result_vid.write(img)
 
-    cv.imshow('frame', bgr_img)
-    k = cv.waitKey(30) & 0xff
-    if k == 27:
-        break
+        cv.imshow('frame', img)
+        k = cv.waitKey(30) & 0xff
+        if k == 27:
+            break
 
-    frame_num += 1
+        frame_num += 1
 
-result_vid.release()
+    if savefile is not None:
+        result_vid.release()
 
-cv.destroyAllWindows()
+    cv.destroyAllWindows()
 
+if __name__ == '__main__':
+
+    parser = argparse.ArgumentParser(description='Show the tracked cells in a video')
+    parser.add_argument('visualization', type=str, help='Type of visualization to create')
+    parser.add_argument('videofile', type=str, help='Path to the video file')
+    parser.add_argument('csvfile', type=str, help='Path to the csvfile')
+    parser.add_argument('--output', type=str, help='Path to the output file', default=None)
+
+    visualization = parser.parse_args().visualization
+    videofile = parser.parse_args().videofile
+    csvfile = parser.parse_args().csvfile
+
+    if visualization == "segments" or visualization == "coloring":
+        convert_segs = True
+    else:
+        convert_segs = False
+
+    # Load dataframe
+    dataframe = utils.loadDataFrame(csvfile,convert_segmentation=convert_segs)
+
+    savefile = parser.parse_args().output
+    if savefile is None:
+        savefile = "output_" + visualization + ".mp4"
+
+    runVisualization(videofile,dataframe,visualization,savefile)
+    
