@@ -70,7 +70,7 @@ def averagePathVelocity(data, fps=30, pixel_size = 0.26, win_size= 1):
         sperm = sperm.sort_values(by='frame')
 
         # Set distance iteration based on window size
-        distance_iteration = (len(sperm) + 1) - win_size
+        distance_iteration = (len(sperm)) - win_size
 
         # Calculate the total distance traveled by the sperm
         total_distance = 0
@@ -109,7 +109,7 @@ if __name__ == '__main__':
     data = utils.loadDataFrame(csvfile)
 
     # Run calcAverageSpeed
-    average_speed = averagePathVelocity(data, fps= 30, pixel_size= 0.1, win_size= 5)
+    average_speed = averagePathVelocity(data, fps= 30, pixel_size= 0.26, win_size= 5)
 
     # Save the new data file with the statistics
     outputfile = csvfile.split('.')[0] + '_withstats.csv'

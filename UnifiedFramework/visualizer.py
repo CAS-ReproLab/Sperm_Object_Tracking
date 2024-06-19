@@ -78,7 +78,7 @@ def coloring(frame,data,frame_num,colors):
 
     return img
 
-def colorSpeed(frame, data, frame_num, lower_threshold, upper_threshold):
+def colorSpeed(frame, data, frame_num):
     """
     Color the frame based on the average path velocity (VAP) of sperm cells.
 
@@ -101,6 +101,14 @@ def colorSpeed(frame, data, frame_num, lower_threshold, upper_threshold):
     # Get only data for the current frame
     current = data[data['frame'] == frame_num]
 
+    # Determine the VAP thresholds for coloring
+    if not current.empty:
+        vap_values = current['VAP']
+        lower_threshold = vap_values.quantile(0.33)
+        upper_threshold = vap_values.quantile(0.66)
+    else:
+        lower_threshold = upper_threshold = 0
+
     for row_idx, sperm in current.iterrows():
         segm = sperm['segmentation']
 
@@ -116,7 +124,7 @@ def colorSpeed(frame, data, frame_num, lower_threshold, upper_threshold):
             vap = sperm['VAP']
 
             # Determine the color based on the VAP value
-            if vap == 0.2:
+            if vap == 0.5:
                 color = color_static  # Red for static sperm
             elif vap < lower_threshold:
                 color = color_slow  # Purple for lower 33%
@@ -156,9 +164,9 @@ def runVisualization(videofile, data, visualization="flow",savefile=None):
     colors = np.random.randint(0, 255, (max_index+1, 3))
 
     # Calculate global VAP thresholds
-    vap_values = data['VAP']
-    lower_threshold = vap_values.quantile(0.33)
-    upper_threshold = vap_values.quantile(0.66)
+    #vap_values = data['VAP']
+    #lower_threshold = vap_values.quantile(0.33)
+    #upper_threshold = vap_values.quantile(0.66)
 
 
     if visualization == "flow":
@@ -185,7 +193,7 @@ def runVisualization(videofile, data, visualization="flow",savefile=None):
             img = coloring(frame,data,frame_num,colors)
 
         elif visualization == "speed":
-            img = colorSpeed(frame,data,frame_num,lower_threshold, upper_threshold)
+            img = colorSpeed(frame,data,frame_num)
 
         elif visualization == "original":
             img = frame
