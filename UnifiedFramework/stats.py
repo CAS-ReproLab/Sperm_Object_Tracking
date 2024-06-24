@@ -43,7 +43,8 @@ def calcAverageSpeed(data, fps=30):
 
     return data
 
-def averagePathVelocity(data, fps=30, pixel_size = 0.26, win_size= 1):
+def averagePathVelocity(data, fps=30, pixel_size = 0.26, win_size= 5
+                        ):
     '''Calculate the average path velocity (VAP) over all frames
 
     Parameters:
@@ -148,8 +149,52 @@ def curvilinearVelocity(data, fps=30, pixel_size = 0.26):
 
     return data
 
+'''def straightLineVelocity(data, fps=30, pixel_size=0.26):
+    Calculate the straight line velocity (VSL) for each sperm cell
 
+    Parameters:
+    data (pd.DataFrame): DataFrame containing sperm tracking data with columns 'sperm', 'frame', 'x', and 'y'.
+    fps (int): Frames per second, default is 30.
+    pixel_size (float): Size of one pixel in micrometers (or any other unit), default is 0.26.
 
+    Returns:
+    pd.DataFrame: DataFrame with an additional column 'VSL' containing the straight line velocity of each sperm cell.
+    
+    # Add a column to the dataframe to store the straight line velocity
+    data['VSL'] = 0.0
+
+    # Determine the number of sperm
+    sperm_count = data['sperm'].nunique()
+
+    # Iterate over each sperm
+    for i in range(sperm_count):
+        # Filter the dataframe for the current sperm
+        sperm = data[data['sperm'] == i]
+
+        # Sort the dataframe by frame
+        sperm = sperm.sort_values(by='frame')
+
+        # Get the start and end positions of the sperm
+        start = (sperm['x'].iloc[0], sperm['y'].iloc[0])
+        end = (sperm['x'].iloc[-1], sperm['y'].iloc[-1])
+
+        # Calculate the straight line distance in pixels
+        distance_pixels = sqrt((end[1] - start[1]) ** 2 + (end[0] - start[0]) ** 2)
+
+        # Calculate the number of frames
+        frame_count = len(sperm)
+
+        if frame_count > 1:
+            # Calculate the VSL in microns per second
+            velocity = distance_pixels * (fps / (frame_count - 1)) * pixel_size
+        else:
+            velocity = 0
+
+        # Add the straight line velocity to the dataframe
+        data.loc[data['sperm'] == i, 'VSL'] = velocity
+
+    return data
+'''
 
 if __name__ == '__main__':
 
@@ -163,6 +208,7 @@ if __name__ == '__main__':
     # Run calcAverageSpeed
     vap = averagePathVelocity(data, fps= 30, pixel_size= 0.26, win_size= 5)
     vcl = curvilinearVelocity(data, fps= 30, pixel_size= 0.26)
+    #vcl = straightLineVelocity(data, fps=30, pixel_size=0.26)
 
     # Save the new data file with the statistics
     outputfile = csvfile.split('.')[0] + '_withstats.csv'

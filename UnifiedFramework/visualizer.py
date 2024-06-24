@@ -106,6 +106,9 @@ def colorSpeed(frame, data, frame_num):
         vap_values = current['VAP']
         lower_threshold = vap_values.quantile(0.33)
         upper_threshold = vap_values.quantile(0.66)
+        with open('example.txt', 'a') as file:
+            file.write('Lower_threshold: ' + str(lower_threshold) + '\n')
+            file.write('Upper_threshold: ' + str(upper_threshold) + '\n')
     else:
         lower_threshold = upper_threshold = 0
 
@@ -122,6 +125,11 @@ def colorSpeed(frame, data, frame_num):
                 continue
 
             vap = sperm['VAP']
+
+            with open('example.txt', 'a') as file:
+                file.write('Vap: ' + str(vap) + '\n')
+                file.write('\n')
+
 
             # Determine the color based on the VAP value
             if vap == 0.5:
@@ -224,6 +232,10 @@ if __name__ == '__main__':
     parser.add_argument('videofile', type=str, help='Path to the video file')
     parser.add_argument('csvfile', type=str, help='Path to the csvfile')
     parser.add_argument('--output', type=str, help='Path to the output file', default=None)
+
+    # Create an empty .txt file
+    with open('example.txt', 'w') as file:
+        pass  # Do nothing, just create the file
 
     visualization = parser.parse_args().visualization
     videofile = parser.parse_args().videofile
