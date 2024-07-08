@@ -1,11 +1,10 @@
 import numpy as np
 import cv2 as cv
-#import json
 import pickle
 import argparse
 from math import sqrt
+import pandas as pd
 
-import utils
 
 def calcAverageSpeed(data, fps=30):
     """
@@ -43,7 +42,7 @@ def calcAverageSpeed(data, fps=30):
 
     return data
 
-def averagePathVelocity(data, fps=30, pixel_size = 0.26, win_size= 5):
+def averagePathVelocity(data, fps=30, pixel_size=0.26, win_size=5):
     '''Calculate the average path velocity (VAP) over all frames
 
     Parameters:
@@ -51,26 +50,23 @@ def averagePathVelocity(data, fps=30, pixel_size = 0.26, win_size= 5):
     fps (int): Frames per second, default is 30.
     pixel_size (float): Size of one pixel in micrometers (or any other unit), default is 0.26.
     win_size (int): Size of the window in micrometers (or any other unit), default is 1 aka calculates
-    curvilinear velocity (VCL). Ajust window_size accordingly for VAP.
+    curvilinear velocity (VCL). Adjust window_size accordingly for VAP.
     Returns the pd.DataFrame: DataFrame with an additional column 'VAP' containing the average speed of each sperm cell.
     '''
-    # Add a column to the dataframe to store the average speed
-    data['VAP'] = 0.0
 
-    # Determine the number of sperm
-    sperm_count = data['sperm'].nunique()
+    # Get unique sperm IDs
+    sperm_ids = data['sperm'].unique()
 
-
-    # Iterate over each sperm
-    for i in range(sperm_count):
+    # Iterate over each sperm ID
+    for sperm_id in sperm_ids:
         # Filter the dataframe for the current sperm
-        sperm = data[data['sperm'] == i]
+        sperm = data[data['sperm'] == sperm_id]
 
         # Sort the dataframe by frame
         sperm = sperm.sort_values(by='frame')
 
         # Set distance iteration based on window size
-        distance_iteration = (len(sperm)) - win_size
+        distance_iteration = len(sperm) - win_size
 
         # Calculate the total distance traveled by the sperm
         total_distance = 0
@@ -83,18 +79,17 @@ def averagePathVelocity(data, fps=30, pixel_size = 0.26, win_size= 5):
             # Add total distance
             total_distance += distance_pixels
 
-        # Calculate the number of frames
-        # win_frames = len(sperm) - win_size
         # Calculate the average speed in real-world units per second
-        if win_frames > 0:
-            average_speed = total_distance * (fps/distance_iteration) * pixel_size
+        if distance_iteration > 0:
+            average_speed = total_distance * (fps / distance_iteration) * pixel_size
         else:
             average_speed = 0
 
         # Add the average speed to the dataframe
-        data.loc[data['sperm'] == i, 'VAP'] = average_speed
+        data.loc[data['sperm'] == sperm_id, 'VAP'] = average_speed
 
     return data
+
 
 
 def curvilinearVelocity(data, fps=30, pixel_size = 0.26):
@@ -108,25 +103,24 @@ def curvilinearVelocity(data, fps=30, pixel_size = 0.26):
     curvilinear velocity (VCL). Ajust window_size accordingly for VAP.
     Returns the pd.DataFrame: DataFrame with an additional column 'VAP' containing the average speed of each sperm cell.
     '''
-    # Add a column to the dataframe to store the average speed
-    data['VCL'] = 0.0
 
-    # Determine the number of sperm
-    sperm_count = data['sperm'].nunique()
+    # Get unique sperm IDs
+    sperm_ids = data['sperm'].unique()
 
-
-    # Iterate over each sperm
-    for i in range(sperm_count):
+    # Iterate over each sperm ID
+    for sperm_id in sperm_ids:
         # Filter the dataframe for the current sperm
-        sperm = data[data['sperm'] == i]
+        sperm = data[data['sperm'] == sperm_id]
 
         # Sort the dataframe by frame
         sperm = sperm.sort_values(by='frame')
 
+        # Get distance iteration
+        distance_iteration = len(sperm) - 1
+
         # Calculate the total distance traveled by the sperm
         total_distance = 0
-        valid_frame_count = 0
-        for j in range(1, len(sperm)):
+        for j in range(1, distance_iteration):
             start = (sperm['x'].iloc[j - 1], sperm['y'].iloc[j - 1])
             end = (sperm['x'].iloc[j], sperm['y'].iloc[j])
             # Calculate the distance in pixels
@@ -135,18 +129,17 @@ def curvilinearVelocity(data, fps=30, pixel_size = 0.26):
             # Add total distance
             total_distance += distance_pixels
 
-            valid_frame_count += 1
-
-        if valid_frame_count > 0:
-            # Calculate the VCL for microns per second
-            velocity =  total_distance * (fps/ (valid_frame_count-1)) * pixel_size
+        # Calculate the average speed in real-world units per second
+        if distance_iteration > 0:
+            average_speed = total_distance * (fps / distance_iteration) * pixel_size
         else:
-            velocity = 0
+            average_speed = 0
 
         # Add the average speed to the dataframe
-        data.loc[data['sperm'] == i, 'VCL'] = velocity
+        data.loc[data['sperm'] == sperm_id, 'VCL'] = average_speed
 
     return data
+
 
 '''def straightLineVelocity(data, fps=30, pixel_size=0.26):
     Calculate the straight line velocity (VSL) for each sperm cell
@@ -202,7 +195,7 @@ if __name__ == '__main__':
 
     csvfile = parser.parse_args().csvfile
 
-    data = utils.loadDataFrame(csvfile)
+    data = pd.read_csv(csvfile)
 
     # Run calcAverageSpeed
     vap = averagePathVelocity(data, fps= 30, pixel_size= 0.26, win_size= 5)

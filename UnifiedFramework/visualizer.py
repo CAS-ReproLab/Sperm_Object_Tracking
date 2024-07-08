@@ -104,9 +104,11 @@ def colorSpeed(frame, data, frame_num):
     # Determine the VAP thresholds for coloring
     if not current.empty:
         vap_values = current['VAP']
-        lower_threshold = vap_values.quantile(0.33)
-        upper_threshold = vap_values.quantile(0.66)
+        static_threshold = vap_values.quantile(0.10)
+        lower_threshold = vap_values.quantile(0.40)
+        upper_threshold = vap_values.quantile(0.70)
         with open('example.txt', 'a') as file:
+            file.write('Static_threshold: ' + str(static_threshold) + '\n')
             file.write('Lower_threshold: ' + str(lower_threshold) + '\n')
             file.write('Upper_threshold: ' + str(upper_threshold) + '\n')
     else:
@@ -132,11 +134,11 @@ def colorSpeed(frame, data, frame_num):
 
 
             # Determine the color based on the VAP value
-            if vap == 0.5:
+            if vap <= static_threshold:
                 color = color_static  # Red for static sperm
-            elif vap < lower_threshold:
+            elif vap <= lower_threshold:
                 color = color_slow  # Purple for lower 33%
-            elif vap < upper_threshold:
+            elif vap <= upper_threshold:
                 color = color_medium  # Green for middle 33%
             else:
                 color = color_fast  # Blue for upper 33%
