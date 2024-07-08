@@ -43,8 +43,7 @@ def calcAverageSpeed(data, fps=30):
 
     return data
 
-def averagePathVelocity(data, fps=30, pixel_size = 0.26, win_size= 5
-                        ):
+def averagePathVelocity(data, fps=30, pixel_size = 0.26, win_size= 5):
     '''Calculate the average path velocity (VAP) over all frames
 
     Parameters:
@@ -85,10 +84,10 @@ def averagePathVelocity(data, fps=30, pixel_size = 0.26, win_size= 5
             total_distance += distance_pixels
 
         # Calculate the number of frames
-        win_frames = len(sperm) - win_size
+        # win_frames = len(sperm) - win_size
         # Calculate the average speed in real-world units per second
         if win_frames > 0:
-            average_speed = total_distance * (fps/win_frames) * pixel_size
+            average_speed = total_distance * (fps/distance_iteration) * pixel_size
         else:
             average_speed = 0
 
