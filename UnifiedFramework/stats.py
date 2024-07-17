@@ -4,6 +4,53 @@ import pickle
 import argparse
 from math import sqrt
 import pandas as pd
+import utils
+
+def interpolate_missing_frames(data, fps=30, pixel_size=0.26):
+    """Interpolate missing frames for each sperm.
+
+       Parameters:
+       data (pd.DataFrame): DataFrame containing sperm tracking data with columns 'sperm', 'frame', 'x', and 'y'.
+
+       Returns:
+       pd.DataFrame: DataFrame with interpolated frames.
+       """
+    # Ensure all sperm IDs are integers
+    data['sperm'] = data['sperm'].astype(int)
+
+    sperm_ids = data['sperm'].unique()
+    interpolated_data = []
+
+    for sperm_id in sperm_ids:
+        sperm_data = data[data['sperm'] == sperm_id].sort_values(by='frame')
+        frames = sperm_data['frame'].values
+        x_coords = sperm_data['x'].values
+        y_coords = sperm_data['y'].values
+
+        for i in range(1, len(frames)):
+            frame_diff = frames[i] - frames[i - 1]
+            if frame_diff > 1:
+                x_start, x_end = x_coords[i - 1], x_coords[i]
+                y_start, y_end = y_coords[i - 1], y_coords[i]
+
+                for f in range(1, frame_diff):
+                    new_frame = frames[i - 1] + f
+                    new_x = x_start + f * (x_end - x_start) / frame_diff
+                    new_y = y_start + f * (y_end - y_start) / frame_diff
+
+                    new_row = sperm_data.iloc[i - 1].copy()
+                    new_row['frame'] = new_frame
+                    new_row['x'] = new_x
+                    new_row['y'] = new_y
+
+                    interpolated_data.append(new_row)
+
+    # Combine original and interpolated data
+    interpolated_df = pd.DataFrame(interpolated_data, columns=data.columns)
+    combined_df = pd.concat([data, interpolated_df], ignore_index=True)
+    combined_df = combined_df.sort_values(by=['sperm', 'frame']).reset_index(drop=True)
+
+    return combined_df
 
 
 def calcAverageSpeed(data, fps=30):
@@ -196,6 +243,9 @@ if __name__ == '__main__':
     csvfile = parser.parse_args().csvfile
 
     data = pd.read_csv(csvfile)
+
+    # Interpolate missing frames
+    data = interpolate_missing_frames(data)
 
     # Run calcAverageSpeed
     vap = averagePathVelocity(data, fps= 30, pixel_size= 0.26, win_size= 5)

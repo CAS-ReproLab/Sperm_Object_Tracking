@@ -78,7 +78,7 @@ def coloring(frame,data,frame_num,colors):
 
     return img
 
-def colorSpeed(frame, data, frame_num):
+def colorSpeed(frame, data, frame_num, static_threshold, lower_threshold, upper_threshold):
     """
     Color the frame based on the average path velocity (VAP) of sperm cells.
 
@@ -101,18 +101,20 @@ def colorSpeed(frame, data, frame_num):
     # Get only data for the current frame
     current = data[data['frame'] == frame_num]
 
+    '''
     # Determine the VAP thresholds for coloring
     if not current.empty:
-        vap_values = current['VAP']
-        static_threshold = vap_values.quantile(0.10)
-        lower_threshold = vap_values.quantile(0.40)
-        upper_threshold = vap_values.quantile(0.70)
+        #vap_values = current['VAP']
+        #static_threshold = vap_values.quantile(0.10)
+        #lower_threshold = vap_values.quantile(0.40)
+        #upper_threshold = vap_values.quantile(0.70)
         with open('example.txt', 'a') as file:
             file.write('Static_threshold: ' + str(static_threshold) + '\n')
             file.write('Lower_threshold: ' + str(lower_threshold) + '\n')
             file.write('Upper_threshold: ' + str(upper_threshold) + '\n')
     else:
         lower_threshold = upper_threshold = 0
+    '''
 
     for row_idx, sperm in current.iterrows():
         segm = sperm['segmentation']
@@ -127,10 +129,6 @@ def colorSpeed(frame, data, frame_num):
                 continue
 
             vap = sperm['VAP']
-
-            with open('example.txt', 'a') as file:
-                file.write('Vap: ' + str(vap) + '\n')
-                file.write('\n')
 
 
             # Determine the color based on the VAP value
@@ -174,9 +172,10 @@ def runVisualization(videofile, data, visualization="flow",savefile=None):
     colors = np.random.randint(0, 255, (max_index+1, 3))
 
     # Calculate global VAP thresholds
-    #vap_values = data['VAP']
-    #lower_threshold = vap_values.quantile(0.33)
-    #upper_threshold = vap_values.quantile(0.66)
+    vap_values = data['VAP']
+    static_threshold = vap_values.quantile(0.10)
+    lower_threshold = vap_values.quantile(0.40)
+    upper_threshold = vap_values.quantile(0.70)
 
 
     if visualization == "flow":
@@ -203,7 +202,7 @@ def runVisualization(videofile, data, visualization="flow",savefile=None):
             img = coloring(frame,data,frame_num,colors)
 
         elif visualization == "speed":
-            img = colorSpeed(frame,data,frame_num)
+            img = colorSpeed(frame,data,frame_num, static_threshold, lower_threshold, upper_threshold)
 
         elif visualization == "original":
             img = frame
@@ -235,9 +234,6 @@ if __name__ == '__main__':
     parser.add_argument('csvfile', type=str, help='Path to the csvfile')
     parser.add_argument('--output', type=str, help='Path to the output file', default=None)
 
-    # Create an empty .txt file
-    with open('example.txt', 'w') as file:
-        pass  # Do nothing, just create the file
 
     visualization = parser.parse_args().visualization
     videofile = parser.parse_args().videofile
