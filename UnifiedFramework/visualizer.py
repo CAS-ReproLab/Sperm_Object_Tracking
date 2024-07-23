@@ -151,6 +151,61 @@ def colorSpeed(frame, data, frame_num, static_threshold, lower_threshold, upper_
 
     return img
 
+def flowSpeed(frame, data, frame_num, mask, static_threshold, lower_threshold, upper_threshold):
+    """
+      Draw optical flow lines and circles based on the speed (VAP) of sperm cells, using different colors for different speed categories.
+
+      Parameters:
+      frame (np.array): The image frame to draw on.
+      data (pd.DataFrame): DataFrame containing sperm tracking data with columns 'sperm', 'frame', 'x', 'y', and 'VAP'.
+      frame_num (int): The current frame number.
+      mask (np.array): The mask image to draw on.
+      static_threshold (float): The threshold for static sperm cells.
+      lower_threshold (float): The lower threshold for slow sperm cells.
+      upper_threshold (float): The upper threshold for medium speed sperm cells.
+    """
+
+    # Define specific colors for each speed category
+    color_static = np.array([255, 0, 0], dtype=np.uint8)  # Red for static
+    color_slow = np.array([128, 0, 128], dtype=np.uint8)  # Purple for slow
+    color_medium = np.array([0, 255, 0], dtype=np.uint8)  # Green for medium
+    color_fast = np.array([0, 0, 255], dtype=np.uint8)  # Blue for fast
+
+    # Get data for the current frame and previous frame
+    current = data[data['frame'] == frame_num]
+    prev = data[data['frame'] == frame_num - 1]
+
+    # Iterate over the sperm
+    for row_idx, sperm in current.iterrows():
+        i = sperm['sperm']
+        x = int(sperm['x'])
+        y = int(sperm['y'])
+        vap = sperm['VAP']  # Speed based on VAP
+        prev_sperm = prev[prev['sperm'] == i]
+        if len(prev_sperm) > 0:
+            prev_sperm = prev_sperm.iloc[0]  # Fail safe for duplicate sperm ids
+            prev_x = int(prev_sperm['x'])
+            prev_y = int(prev_sperm['y'])
+
+            # Determine the color based on the VAP value
+            if vap <= static_threshold:
+                color = color_static  # Red for static sperm
+            elif vap <= lower_threshold:
+                color = color_slow  # Purple for lower 33%
+            elif vap <= upper_threshold:
+                color = color_medium  # Green for middle 33%
+            else:
+                color = color_fast  # Blue for upper 33%
+
+            # Draw the optical flow lines and circles
+            mask = cv.line(mask, (prev_x, prev_y), (x, y), color.tolist(), 2)
+            mask = cv.circle(mask, (x, y), 2, color.tolist(), -1)
+
+    img = cv.add(frame, mask)
+
+    return img
+
+
 
 def runVisualization(videofile, data, visualization="flow",savefile=None):
 
@@ -178,7 +233,7 @@ def runVisualization(videofile, data, visualization="flow",savefile=None):
     upper_threshold = vap_values.quantile(0.70)
 
 
-    if visualization == "flow":
+    if visualization == "flow" or visualization == "sflow":
         ret, frame = cap.read()
         # Create a mask image for drawing purposes
         mask = np.zeros_like(frame)
@@ -203,6 +258,9 @@ def runVisualization(videofile, data, visualization="flow",savefile=None):
 
         elif visualization == "speed":
             img = colorSpeed(frame,data,frame_num, static_threshold, lower_threshold, upper_threshold)
+
+        elif visualization == "sflow":
+            img = flowSpeed(frame, data, frame_num, mask, static_threshold, lower_threshold, upper_threshold)
 
         elif visualization == "original":
             img = frame
