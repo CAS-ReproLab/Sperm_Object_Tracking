@@ -43,7 +43,7 @@ def threshold(frame, method='otsu',global_thresh=50):
         bw = cv.bitwise_or(bw1,bw2)
     else:
         raise ValueError('Invalid thresholding method')
-    
+
     return bw
 
 
@@ -68,11 +68,12 @@ def determineCentroids_morphology(frames, kernel_size=(3,3)):
         # Add centroids to dataframe
         for centroid in centroids:
             f.loc[len(f.index)] = [centroid[1], centroid[0], i]
-
+       
     return f
 
-def determineCentroids(frames, diameter=11, minmass=500):
+def determineCentroids(frames, diameter=11, minmass=100):
     f = tp.batch(frames, diameter=diameter, minmass=minmass)
+    
     return f
 
 def trackCentroids(f, search_range=7, memory=3):
@@ -83,7 +84,7 @@ def trackCentroids(f, search_range=7, memory=3):
     t = t.rename(columns={'particle': 'sperm'})
 
     t = t.reset_index(drop=True)
-
+    
     return t
 
 def segmentCells(frames, t):
@@ -186,7 +187,7 @@ def segmentCells(frames, t):
         final.at[idx,'segmentation'] = all_segmentations[n][label]
         
     print("Warning:", out_indices, "centroids found in background in", len(frames), "frames")
-
+    
     return final
 
 
@@ -204,7 +205,7 @@ def processVideo(videofile):
 
     # Segment the cells
     final = segmentCells(frames, t)
-
+    
     return final
 
 def labelIm2Array(label_im, num_labels):
@@ -217,7 +218,7 @@ def labelIm2Array(label_im, num_labels):
         for j in range(cols):
             if label_im[i,j] != -1:
                 segmentations[label_im[i,j]].append([i,j])
-
+    
     return segmentations
 
 
