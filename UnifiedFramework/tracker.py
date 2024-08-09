@@ -71,13 +71,13 @@ def determineCentroids_morphology(frames, kernel_size=(3,3)):
        
     return f
 
-def determineCentroids(frames, diameter=11, minmass=100, maxsize=2.5):
-    f = tp.batch(frames, diameter=diameter, minmass=minmass)
+def determineCentroids(frames, diameter=7, minmass=750, maxsize=2):
+    f = tp.batch(frames, diameter=diameter, minmass=minmass, maxsize=maxsize)
     
     return f
 
-def trackCentroids(f, search_range=7, memory=3):
-    t = tp.link(f, search_range, memory=memory)
+def trackCentroids(f, search_range=7, memory=3, adaptive_stop=0.2, adaptive_step=0.95):
+    t = tp.link(f, search_range=20, memory=10, adaptive_stop=adaptive_stop, adaptive_step=adaptive_step)
     t = tp.filter_stubs(t, 15)
 
     # Change the column name of particle to sperm
@@ -195,6 +195,8 @@ def processVideo(videofile):
 
     # Open the video file
     frames = utils.loadVideo(videofile,as_gray=True)
+    
+    #first_25_frames = frames[:25]
 
     # Determine the centroids info
     #f = determineCentroids_morphology(frames)
