@@ -64,6 +64,9 @@ def coloring(frame,data,frame_num,colors):
     # Get only data for the current frame
     current = data[data['frame'] == frame_num]
 
+    if "segmentation" not in current.columns:
+        raise ValueError("Segmentation column not be found in dataframe. Check that it was computed and loaded.")
+
     for row_idx, sperm in current.iterrows():
         i = sperm['sperm']
         segm = sperm['segmentation']
@@ -145,12 +148,16 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Show the tracked cells in a video')
     parser.add_argument('visualization', type=str, help='Type of visualization to create')
     parser.add_argument('videofile', type=str, help='Path to the video file')
-    parser.add_argument('csvfile', type=str, help='Path to the csvfile')
-    parser.add_argument('--output', type=str, help='Path to the output file', default=None)
+    parser.add_argument('--csv', type=str, default = None, help='Path to the csvfile')
+    parser.add_argument('--output', type=str, default = None, help='Path to the output file')
 
     visualization = parser.parse_args().visualization
     videofile = parser.parse_args().videofile
-    csvfile = parser.parse_args().csvfile
+    csvfile = parser.parse_args().csv
+    savefile = parser.parse_args().output
+
+    if csvfile is None:
+        csvfile = ".".join(videofile.split('.')[:-1]) + '.csv'
 
     if visualization == "segments" or visualization == "coloring":
         convert_segs = True
@@ -160,7 +167,6 @@ if __name__ == '__main__':
     # Load dataframe
     dataframe = utils.loadDataFrame(csvfile,convert_segmentation=convert_segs)
 
-    savefile = parser.parse_args().output
     if savefile is None:
         savefile = "output_" + visualization + ".mp4"
 

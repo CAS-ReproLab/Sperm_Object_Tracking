@@ -190,7 +190,7 @@ def segmentCells(frames, t):
     return final
 
 
-def processVideo(videofile):
+def processVideo(videofile, compute_segs=True):
 
     # Open the video file
     frames = utils.loadVideo(videofile,as_gray=True)
@@ -203,9 +203,10 @@ def processVideo(videofile):
     t = trackCentroids(f)
 
     # Segment the cells
-    final = segmentCells(frames, t)
+    if compute_segs:
+        t = segmentCells(frames, t)
 
-    return final
+    return t
 
 def labelIm2Array(label_im, num_labels):
     segmentations = []
@@ -226,12 +227,17 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Track cells in a video')
     parser.add_argument('videofile', type=str, help='Path to the video file')
+    parser.add_argument('--output', type=str, default=None, help='Path to the output file')
+    parser.add_argument('--no_segmentation', action='store_false', help='Do not segment the cells')
 
     videofile = parser.parse_args().videofile
+    outputfile = parser.parse_args().output
+    compute_segs = parser.parse_args().no_segmentation
 
-    final = processVideo(videofile)
+    final = processVideo(videofile,compute_segs)
 
-    outputfile = videofile.split('.')[0] + '_tracked.csv'
+    if outputfile is None:
+        outputfile = ".".join(videofile.split('.')[:-1]) + '.csv'
 
     utils.saveDataFrame(final, outputfile)
 

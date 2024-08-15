@@ -11,6 +11,9 @@ def calcAverageSpeed(data, fps=30):
     """
     Calculate the average speed of a sperm cell
     """
+    if "average_speed" in data.columns:
+        print("Warning: The average_speed column already exists in the dataframe. Overwriting it.")
+
     # Add a column to the dataframe to store the average speed
     data['average_speed'] = 0.0
 
@@ -47,8 +50,13 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Compute statistics about sperm cells')
     parser.add_argument('csvfile', type=str, help='Path to the tracker csv file')
+    parser.add_argument('--output', type=str, default=None, help='Path to the output file')
 
     csvfile = parser.parse_args().csvfile
+    outputfile = parser.parse_args().output
+
+    if outputfile is None:
+        outputfile = csvfile
 
     data = utils.loadDataFrame(csvfile)
 
@@ -56,8 +64,6 @@ if __name__ == '__main__':
     average_speed = calcAverageSpeed(data)
 
     # Save the new data file with the statistics
-    outputfile = csvfile.split('.')[0] + '_withstats.csv'
-
     utils.saveDataFrame(average_speed, outputfile)
 
     print("Statistics computed and saved to", outputfile)
