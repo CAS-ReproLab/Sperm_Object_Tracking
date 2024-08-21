@@ -32,7 +32,9 @@ def interpolate_missing_frames(data, fps=30, pixel_size=0.26):
             if frame_diff > 1:
                 x_start, x_end = x_coords[i - 1], x_coords[i]
                 y_start, y_end = y_coords[i - 1], y_coords[i]
-
+                if frame_diff > 15:
+                    print("Warning: The difference between frames is more than 15")
+                    continue
                 for f in range(1, frame_diff):
                     new_frame = frames[i - 1] + f
                     new_x = x_start + f * (x_end - x_start) / frame_diff
