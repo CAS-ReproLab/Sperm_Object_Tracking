@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request
+from werkzeug.utils import secure_filename
 import cv2
 import numpy as np
 
@@ -37,11 +38,12 @@ def success():
     if request.method == 'POST':
 
         file = request.files["video file"]
+        filename = secure_filename(file.filename)
 
-        file.save("static/" + file.filename)
-        current_filename = file.filename
+        file.save("static/" + filename)
+        current_filename = filename
 
-        video = cv2.VideoCapture("static/" + file.filename)
+        video = cv2.VideoCapture("static/" + filename)
         saveVideo(video, "static/output.mp4")
 
         return render_template('acknowledgement.html')
@@ -69,7 +71,6 @@ def process():
         binary = cv2.cvtColor(binary, cv2.COLOR_GRAY2BGR)
 
         out.write(np.hstack([frame, binary]))
-        print(np.hstack([frame, binary]).shape)
 
     out.release()
 
