@@ -1,8 +1,6 @@
 import numpy as np
 import cv2 as cv
 from scipy.optimize import linear_sum_assignment
-import pickle
-import json
 
 import argparse
 from tqdm import tqdm, trange
