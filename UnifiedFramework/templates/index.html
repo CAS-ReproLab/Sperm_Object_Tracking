@@ -6,7 +6,7 @@
 <body>
   <h2>Serving video files from Flask template</h2>
   <video width="1200" height="600" controls>
-    <source src={{ url_for('static', filename="output.mp4") }} type="video/mp4">
+    <source src={{ url_for('download_file', filename='output.mp4') }} type="video/mp4">
     Your browser does not support the video tag.
   </video>
 
@@ -19,12 +19,12 @@
   <br/>
 
   <form method="POST" action="/process"> 
-    <input type="range" min="0" max="100" name="threshold" value={{slider_value}} />
+    <input type="range" min="0" max="100" name="threshold" value={{threshold}}}} />
     <input type="submit" value="Process" />
     </form>
     <br/>
     
-    <p>Threshhold: {{slider_value}}</p>
+    <p>Threshold: {{threshold}}</p>
 
 </body>
 </html>
