@@ -1,7 +1,8 @@
-from flask import Flask, render_template, request, send_from_directory
+from flask import Flask, render_template, request, Response, send_from_directory
 from werkzeug.utils import secure_filename
 import cv2
 import numpy as np
+import time
 
 current_filename = "demo.mp4"
 
@@ -20,6 +21,21 @@ def saveVideo(video, file_name):
         out.write(frame)
 
     out.release()
+
+def video_stream():
+    video = cv2.VideoCapture("cache/output.mp4")
+    fps = video.get(cv2.CAP_PROP_FPS)
+    while video.isOpened():
+        time.sleep(1/(fps+1e-4))
+        ret, frame = video.read()
+        if not ret:
+            video.set(cv2.CAP_PROP_POS_FRAMES, 0)
+            continue
+
+        _, buffer = cv2.imencode('.jpg', frame)
+        frame = buffer.tobytes()
+        yield (b'--frame\r\n'
+               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
 
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
@@ -55,6 +71,10 @@ def success():
 def download_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename, as_attachment=True)
 
+@app.route('/video_feed')
+def video_feed():
+    return Response(video_stream(), mimetype='multipart/x-mixed-replace; boundary=frame')
+
 @app.route('/process', methods=["POST"])
 def process():
 
@@ -81,7 +101,7 @@ def process():
     out.release()
 
     templateData ={
-        'threshold': thresh_value
+        'threshold': threshold
     }
 
     return render_template('index.html', **templateData)
