@@ -71,13 +71,13 @@ def determineCentroids_morphology(frames, kernel_size=(3,3)):
        
     return f
 
-def determineCentroids(frames, diameter=7, minmass=750, maxsize=2):
+def determineCentroids(frames, diameter=5, minmass=50, maxsize=10):
     f = tp.batch(frames, diameter=diameter, minmass=minmass, maxsize=maxsize)
     
     return f
 
 def trackCentroids(f, search_range=7, memory=3, adaptive_stop=0.2, adaptive_step=0.95):
-    t = tp.link(f, search_range=20, memory=10, adaptive_stop=adaptive_stop, adaptive_step=adaptive_step)
+    t = tp.link(f, search_range=search_range, memory=memory, adaptive_stop=adaptive_stop, adaptive_step=adaptive_step)
     t = tp.filter_stubs(t, 15)
 
     # Change the column name of particle to sperm
