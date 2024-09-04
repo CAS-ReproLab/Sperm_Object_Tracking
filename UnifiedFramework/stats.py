@@ -48,8 +48,12 @@ def interpolate_missing_frames(data, fps=30, pixel_size=0.26):
                     interpolated_data.append(new_row)
 
     # Combine original and interpolated data
-    interpolated_df = pd.DataFrame(interpolated_data, columns=data.columns)
-    combined_df = pd.concat([data, interpolated_df], ignore_index=True)
+    if interpolated_data:  # Check if interpolated_data is not empty
+        interpolated_df = pd.DataFrame(interpolated_data, columns=data.columns)
+        combined_df = pd.concat([data, interpolated_df], ignore_index=True)
+    else:
+        combined_df = data.copy()
+
     combined_df = combined_df.sort_values(by=['sperm', 'frame']).reset_index(drop=True)
 
     return combined_df
@@ -193,7 +197,8 @@ def curvilinearVelocity(data, fps=30, pixel_size = 0.26):
     return data
 
 
-'''def straightLineVelocity(data, fps=30, pixel_size=0.26):
+def straightLineVelocity(data, fps=30, pixel_size=0.26):
+    '''
     Calculate the straight line velocity (VSL) for each sperm cell
 
     Parameters:
@@ -203,7 +208,7 @@ def curvilinearVelocity(data, fps=30, pixel_size = 0.26):
 
     Returns:
     pd.DataFrame: DataFrame with an additional column 'VSL' containing the straight line velocity of each sperm cell.
-    
+    '''
     # Add a column to the dataframe to store the straight line velocity
     data['VSL'] = 0.0
 
@@ -238,7 +243,6 @@ def curvilinearVelocity(data, fps=30, pixel_size = 0.26):
         data.loc[data['sperm'] == i, 'VSL'] = velocity
 
     return data
-'''
 
 if __name__ == '__main__':
 
@@ -260,14 +264,13 @@ if __name__ == '__main__':
     # Run calcAverageSpeed
     vap = averagePathVelocity(data, fps= 30, pixel_size= 0.26, win_size= 5)
     vcl = curvilinearVelocity(data, fps= 30, pixel_size= 0.26)
-    #vcl = straightLineVelocity(data, fps=30, pixel_size=0.26)
+    vsl = straightLineVelocity(data, fps=30, pixel_size=0.26)
 
     # Save the new data file with the statistics
 
     utils.saveDataFrame(vap, outputfile)
     utils.saveDataFrame(vcl, outputfile)
-
-    #utils.saveDataFrame(average_speed, outputfile)
+    utils.saveDataFrame(vsl, outputfile)
 
 
     print("Statistics computed and saved to", outputfile)
