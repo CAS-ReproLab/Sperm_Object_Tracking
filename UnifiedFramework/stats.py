@@ -267,7 +267,7 @@ if __name__ == '__main__':
     utils.saveDataFrame(vap, outputfile)
     utils.saveDataFrame(vcl, outputfile)
 
-    utils.saveDataFrame(average_speed, outputfile)
+    #utils.saveDataFrame(average_speed, outputfile)
 
 
     print("Statistics computed and saved to", outputfile)
