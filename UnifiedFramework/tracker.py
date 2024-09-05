@@ -71,7 +71,7 @@ def determineCentroids_morphology(frames, kernel_size=(3,3)):
        
     return f
 
-def determineCentroids(frames, diameter=5, minmass=50, maxsize=10):
+def determineCentroids(frames, diameter=7, minmass=100, maxsize=5):
     f = tp.batch(frames, diameter=diameter, minmass=minmass, maxsize=maxsize)
     
     return f
