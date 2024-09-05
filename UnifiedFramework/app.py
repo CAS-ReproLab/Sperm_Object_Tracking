@@ -4,7 +4,26 @@ import cv2
 import numpy as np
 import time
 
-current_filename = "demo.mp4"
+class ConfigInfo:
+    def __init__(self):
+        self.current_filename = "demo.mp4"
+        self.use_median = False
+        self.diameter = 11
+        self.minmass = 100
+        self.fps = 30
+        self.width = 640
+        self.height = 480
+        self.first_frame = None
+        
+    def set_video_info(self, video):
+        self.fps = video.get(cv2.CAP_PROP_FPS)
+        self.width = int(video.get(cv2.CAP_PROP_FRAME_WIDTH))
+        self.height = int(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        self.first_frame = video.read()[1]
+        video.set(cv2.CAP_PROP_POS_FRAMES, 0)
+
+
+config_info = ConfigInfo()
 
 UPLOAD_FOLDER = 'cache'
 ALLOWED_EXTENSIONS = {'avi', 'mp4'}
@@ -43,8 +62,8 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 @app.route('/')
 def index():
-    global current_filename
-    video = cv2.VideoCapture("cache/" + current_filename)
+    global config_info
+    video = cv2.VideoCapture("cache/" + config_info.current_filename)
     saveVideo(video, "cache/output.mp4")
 
     return render_template('index.html')
@@ -52,7 +71,7 @@ def index():
 @app.route('/success', methods = ['POST'])   
 def success():   
 
-    global current_filename
+    global config_info
 
     if request.method == 'POST':
 
@@ -60,9 +79,10 @@ def success():
         filename = secure_filename(file.filename)
 
         file.save("cache/" + filename)
-        current_filename = filename
+        config_info.current_filename = filename
 
         video = cv2.VideoCapture("cache/" + filename)
+        config_info.set_video_info(video)
         saveVideo(video, "cache/output.mp4")
 
         return render_template('acknowledgement.html')
@@ -75,16 +95,16 @@ def download_file(filename):
 def video_feed():
     return Response(video_stream(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
+@app.route('/cache_image')
+def cache_image():
+    return send_from_directory(app.config['UPLOAD_FOLDER'], "output.jpg")    
+
 @app.route('/preprocess', methods=["POST"])
 def process():
 
-    global current_filename
-
-    video = cv2.VideoCapture("cache/" + current_filename)
-    fps = video.get(cv2.CAP_PROP_FPS)
-    width = int(video.get(cv2.CAP_PROP_FRAME_WIDTH))
-    height = int(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    out = cv2.VideoWriter("cache/output.mp4", cv2.VideoWriter_fourcc(*'avc1'), fps, (2*width, height))
+    global config_info
+    video = cv2.VideoCapture("cache/" + config_info.current_filename)
+    out = cv2.VideoWriter("cache/output.mp4", cv2.VideoWriter_fourcc(*'avc1'), config_info.fps, (2*config_info.width, config_info.height))
 
     use_median = request.form.get("use_median")
     print("USE_MEDIAN =", use_median)
@@ -95,9 +115,12 @@ def process():
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
         if use_median == "on":
+            config_info.use_median = True
             gray = gray.astype(np.float32)
             gray = np.abs(gray - np.median(gray))
             gray = np.clip(gray,0,255).astype(np.uint8)
+        else:
+            config_info.use_median = False
 
         result = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
 
@@ -110,6 +133,32 @@ def process():
     }
 
     return render_template('index.html', **templateData)
+
+
+@app.route('/detect', methods=["GET","POST"])
+def detect():
+
+    global config_info
+
+    image = config_info.first_frame
+
+    if request.method == 'GET':
+        cv2.imwrite("cache/output.jpg", image)
+        return render_template('detection.html')
+
+
+    diameter = request.form.get("diameter")
+    minmass = request.form.get("minmass")
+    print("DIAMETER =", diameter)
+    print("MINMASS =", minmass)
+
+    cv2.imwrite("cache/output.jpg", image)
+    
+    templateData ={
+        'diameter': diameter
+    }
+
+    return render_template('detection.html', **templateData)
 
 if __name__ == '__main__':
     app.run(host='127.0.0.1',debug=True)
