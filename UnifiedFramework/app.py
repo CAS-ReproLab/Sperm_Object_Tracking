@@ -75,7 +75,7 @@ def download_file(filename):
 def video_feed():
     return Response(video_stream(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
-@app.route('/process', methods=["POST"])
+@app.route('/preprocess', methods=["POST"])
 def process():
 
     global current_filename
@@ -86,22 +86,27 @@ def process():
     height = int(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
     out = cv2.VideoWriter("cache/output.mp4", cv2.VideoWriter_fourcc(*'avc1'), fps, (2*width, height))
 
-    thresh_value = request.form["threshold"]
+    use_median = request.form.get("use_median")
+    print("USE_MEDIAN =", use_median)
 
     for i in range(int(video.get(cv2.CAP_PROP_FRAME_COUNT))):
         ret, frame = video.read()
         
-        threshold = int(thresh_value)
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        _, binary = cv2.threshold(gray, threshold, 255, cv2.THRESH_BINARY)
-        binary = cv2.cvtColor(binary, cv2.COLOR_GRAY2BGR)
 
-        out.write(np.hstack([frame, binary]))
+        if use_median == "on":
+            gray = gray.astype(np.float32)
+            gray = np.abs(gray - np.median(gray))
+            gray = np.clip(gray,0,255).astype(np.uint8)
+
+        result = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
+
+        out.write(np.hstack([frame, result]))
 
     out.release()
 
     templateData ={
-        'threshold': threshold
+        'use_median': use_median
     }
 
     return render_template('index.html', **templateData)

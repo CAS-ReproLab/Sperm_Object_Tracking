@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Video Example</title>
+  <title>Video Processor</title>
   <meta name = "viewport" content = "width = device-width, initial-scale=1">
   <style>
     img{ display: block;
@@ -12,7 +12,7 @@
 </style>
 </head>
 <body>
-  <h2>Serving video files from Flask template</h2>
+  <h2> File Upload and Preprocessing </h2>
   
   <!--
   <video width="1200" height="600" controls>
@@ -32,13 +32,15 @@
   <br/>
   <br/>
 
-  <form method="POST" action="/process"> 
-    <input type="range" min="0" max="100" name="threshold" value={{threshold}} />
+  <form method="POST" action="/preprocess"> 
+    <input type="checkbox" name="use_median"/>
+    <label for="use_median">Use Median Filter</label>
     <input type="submit" value="Process" />
     </form>
     <br/>
-    
-    <p>Threshold: {{threshold}}</p>
+
+    <form action="/detect" method="GET">
+      <input type="submit" value="Next">
 
 </body>
 </html>
