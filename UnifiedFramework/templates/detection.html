@@ -26,9 +26,9 @@
   <br/>
 
   <form method="POST" action="/detect"> 
-    <input type="number" name="diameter" value="11"/>
+    <input type="number" name="diameter" value="{{diameter}}"/>
     <label for="diameter">Approximate Diameter (in pixels)</label> </br>
-    <input type="number" name="minmass" value="500"/>
+    <input type="number" name="minmass" value="{{minmass}}"/>
     <label for="minmass">Approximate Minimum Size (in pixels?)</label>
     <input type="submit" value="Process" />
     </form>

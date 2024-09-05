@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, Response, send_from_directory
 from werkzeug.utils import secure_filename
 import cv2
 import numpy as np
+import trackpy as tp
 import time
 
 class ConfigInfo:
@@ -9,11 +10,11 @@ class ConfigInfo:
         self.current_filename = "demo.mp4"
         self.use_median = False
         self.diameter = 11
-        self.minmass = 100
-        self.fps = 30
-        self.width = 640
-        self.height = 480
-        self.first_frame = None
+        self.minmass = 300
+        self.fps = 5
+        self.width = 1024
+        self.height = 1024
+        self.first_frame = cv2.imread("cache/demo.jpg")
         
     def set_video_info(self, video):
         self.fps = video.get(cv2.CAP_PROP_FPS)
@@ -144,21 +145,39 @@ def detect():
 
     if request.method == 'GET':
         cv2.imwrite("cache/output.jpg", image)
-        return render_template('detection.html')
+        templateData ={
+            'diameter': config_info.diameter,
+            'minmass': config_info.minmass
+        }
+        return render_template('detection.html',**templateData)
 
+    else:
+        diameter = request.form.get("diameter")
+        minmass = request.form.get("minmass")
+        print("DIAMETER =", diameter)
+        print("MINMASS =", minmass)
 
-    diameter = request.form.get("diameter")
-    minmass = request.form.get("minmass")
-    print("DIAMETER =", diameter)
-    print("MINMASS =", minmass)
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        df = tp.locate(gray, diameter=int(diameter), minmass=int(minmass))
 
-    cv2.imwrite("cache/output.jpg", image)
-    
-    templateData ={
-        'diameter': diameter
-    }
+        output_im = np.copy(image)
 
-    return render_template('detection.html', **templateData)
+        for row in df.iterrows():
+            x = int(row[1]['x'])
+            y = int(row[1]['y'])
+            output_im = cv2.circle(output_im, (x,y), 3, (0, 0, 255), -1)
+
+        cv2.imwrite("cache/output.jpg", np.hstack([image, output_im]))
+        
+        config_info.diameter = diameter
+        config_info.minmass = minmass
+
+        templateData ={
+            'diameter': diameter,
+            'minmass': minmass
+        }
+
+        return render_template('detection.html', **templateData)
 
 if __name__ == '__main__':
     app.run(host='127.0.0.1',debug=True)
