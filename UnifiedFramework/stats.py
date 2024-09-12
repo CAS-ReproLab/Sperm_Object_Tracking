@@ -252,6 +252,12 @@ if __name__ == '__main__':
     parser.add_argument('csvfile', type=str, help='Path to the tracker csv file')
     parser.add_argument('--output', type=str, default=None, help='Path to the output file')
 
+    '''Pixel Sizes
+    5X 0.5512 pixels per micron
+    10X 1.0476 pixels per micron
+    20X 2.0619 pixels per micron
+    '''
+
     csvfile = parser.parse_args().csvfile
     outputfile = parser.parse_args().output
 
@@ -264,9 +270,9 @@ if __name__ == '__main__':
     data = interpolate_missing_frames(data)
 
     # Run calcAverageSpeed
-    vap = averagePathVelocity(data, fps= 30, pixel_size= 0.26, win_size= 5)
-    vcl = curvilinearVelocity(data, fps= 30, pixel_size= 0.26)
-    vsl = straightLineVelocity(data, fps=30, pixel_size=0.26)
+    vap = averagePathVelocity(data, fps= 30, pixel_size= 1.05, win_size= 5)
+    vcl = curvilinearVelocity(data, fps= 30, pixel_size= 1.05)
+    vsl = straightLineVelocity(data, fps=30, pixel_size= 1.05)
 
     # Save the new data file with the statistics
 
