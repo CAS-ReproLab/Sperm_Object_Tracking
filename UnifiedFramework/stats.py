@@ -270,9 +270,9 @@ if __name__ == '__main__':
     data = interpolate_missing_frames(data)
 
     # Run calcAverageSpeed
-    vap = averagePathVelocity(data, fps= 30, pixel_size= 1.05, win_size= 5)
-    vcl = curvilinearVelocity(data, fps= 30, pixel_size= 1.05)
-    vsl = straightLineVelocity(data, fps=30, pixel_size= 1.05)
+    vap = averagePathVelocity(data, fps= 9, pixel_size= 1.0476, win_size= 5)
+    vcl = curvilinearVelocity(data, fps= 9, pixel_size= 1.0476)
+    vsl = straightLineVelocity(data, fps=9, pixel_size= 1.0476)
 
     # Save the new data file with the statistics
 

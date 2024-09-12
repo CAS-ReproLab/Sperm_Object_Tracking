@@ -200,7 +200,7 @@ def processVideo(videofile, compute_segs=True):
 
     # Determine the centroids info
     #f = determineCentroids_morphology(frames)
-    f = determineCentroids(frames, 5, 150, 5)
+    f = determineCentroids(frames, 5, 50, 5)
 
     # Track the centroids
     t = trackCentroids(f)

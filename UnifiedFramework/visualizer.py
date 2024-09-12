@@ -208,8 +208,6 @@ def flowSpeed(frame, data, frame_num, mask, static_threshold, lower_threshold, u
 
     return img
 
-
-
 def runVisualization(videofile, data, visualization="flow",savefile=None):
 
     # Open the video file
