@@ -85,7 +85,7 @@ def trackCentroids(f, search_range=9, memory=9, adaptive_stop=0.2, adaptive_step
     predictor = tp.predict.NearestVelocityPredict()
     
     # Use tp.link_df() with the predictor argument
-    t = tp.link_df(f, search_range=search_range, memory=memory, predictor=predictor,
+    t = predictor.link_df(f, search_range=search_range, memory=memory,
                    adaptive_stop=adaptive_stop, adaptive_step=adaptive_step)
     
     t = tp.filter_stubs(t, 15)
