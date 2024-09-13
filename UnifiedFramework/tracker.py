@@ -76,8 +76,18 @@ def determineCentroids(frames, diameter=5, minmass=50, maxsize=10):
     
     return f
 
+
 def trackCentroids(f, search_range=9, memory=9, adaptive_stop=0.2, adaptive_step=0.95):
-    t = tp.link(f, search_range=search_range, memory=memory, adaptive_stop=adaptive_stop, adaptive_step=adaptive_step)
+    
+    #t = tp.link(f, search_range=search_range, memory=memory, adaptive_stop=adaptive_stop, adaptive_step=adaptive_step)
+    
+    # Initialize the NearestVelocityPredict predictor
+    predictor = tp.predict.NearestVelocityPredict()
+    
+    # Use tp.link_df() with the predictor argument
+    t = tp.link_df(f, search_range=search_range, memory=memory, predictor=predictor,
+                   adaptive_stop=adaptive_stop, adaptive_step=adaptive_step)
+    
     t = tp.filter_stubs(t, 15)
 
     # Change the column name of particle to sperm
@@ -113,7 +123,7 @@ def segmentCells(frames, t):
         frame = frames[n]
 
         # Run connected components again with a lower threshold to get the segmentation
-        bw2 = threshold(frame, method='hybrid')
+        bw2 = threshold(frame, method='adaptive')
         _, label_im, stats, _ = cv.connectedComponentsWithStats(bw2, 4, cv.CV_32S)
 
         # Seperate bbox from area
