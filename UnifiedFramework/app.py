@@ -4,6 +4,9 @@ import cv2
 import numpy as np
 import trackpy as tp
 import time
+import utils
+import tracker
+import visualizer
 
 class ConfigInfo:
     def __init__(self):
@@ -11,10 +14,14 @@ class ConfigInfo:
         self.use_median = False
         self.diameter = 11
         self.minmass = 300
+        self.search_range = 7
+        self.memory = 3
         self.fps = 5
         self.width = 1024
         self.height = 1024
         self.first_frame = cv2.imread("cache/demo.jpg")
+        self.detect_df = None
+        self.track_df = None
         
     def set_video_info(self, video):
         self.fps = video.get(cv2.CAP_PROP_FPS)
@@ -145,20 +152,15 @@ def detect():
 
     if request.method == 'GET':
         cv2.imwrite("cache/output.jpg", image)
-        templateData ={
-            'diameter': config_info.diameter,
-            'minmass': config_info.minmass
-        }
-        return render_template('detection.html',**templateData)
 
     else:
-        diameter = request.form.get("diameter")
-        minmass = request.form.get("minmass")
+        diameter = int(request.form.get("diameter"))
+        minmass = int(request.form.get("minmass"))
         print("DIAMETER =", diameter)
         print("MINMASS =", minmass)
 
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        df = tp.locate(gray, diameter=int(diameter), minmass=int(minmass))
+        df = tp.locate(gray, diameter=diameter, minmass=minmass)
 
         output_im = np.copy(image)
 
@@ -172,12 +174,58 @@ def detect():
         config_info.diameter = diameter
         config_info.minmass = minmass
 
-        templateData ={
-            'diameter': diameter,
-            'minmass': minmass
-        }
 
-        return render_template('detection.html', **templateData)
+    templateData ={
+        'diameter': config_info.diameter,
+        'minmass': config_info.minmass
+    }
+
+    return render_template('detection.html', **templateData)
+
+@app.route('/track', methods=["GET","POST"])
+def track():
+
+    if request.method == 'GET':
+        diameter = config_info.diameter
+        minmass = config_info.minmass
+
+        frames = utils.loadVideo("cache/" + config_info.current_filename,as_gray=True)
+        df = tracker.determineCentroids(frames, diameter=diameter, minmass=minmass)
+
+        config_info.detect_df = df
+
+    else:
+        search_range = int(request.form.get("search_range"))
+        memory = int(request.form.get("memory"))
+        print("SEARCH_RANGE =", search_range)
+        print("MEMORY =", memory)
+
+        df = tracker.trackCentroids(config_info.detect_df, search_range=config_info.search_range, memory=config_info.memory)
+        config_info.track_df = df
+
+        # Save the video with the tracking
+        video = cv2.VideoCapture("cache/" + config_info.current_filename)
+        out = cv2.VideoWriter("cache/output.mp4", cv2.VideoWriter_fourcc(*'avc1'), config_info.fps, (2*config_info.width, config_info.height))
+        
+        max_id = int(df['sperm'].max())
+        colors = np.random.randint(0, 255, (max_id+1, 3))
+        ret, frame = video.read()
+        mask = np.zeros_like(frame)
+
+        for frame_num in range(1,int(video.get(cv2.CAP_PROP_FRAME_COUNT))):
+            ret, frame = video.read()
+            img = visualizer.opticalFlow(frame,df,frame_num,mask,colors)
+            out.write(np.hstack([frame, img]))
+
+        config_info.search_range = search_range
+        config_info.memory = memory
+
+    templateData = {
+        'search_range': config_info.search_range,
+        'memory': config_info.memory
+    }
+
+    return render_template('track.html',**templateData)
 
 if __name__ == '__main__':
     app.run(host='127.0.0.1',debug=True)

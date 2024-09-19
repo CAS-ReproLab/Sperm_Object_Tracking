@@ -31,8 +31,8 @@ def opticalFlow(frame,data,frame_num,mask,colors):
             #prev_y = min(max(prev_y, 0), frame.shape[0])
 
             # Draw
-            mask = cv.line(mask, (prev_x, prev_y), (x, y), colors[i].tolist(), 2)
-            mask = cv.circle(mask, (x, y), 2, colors[i].tolist(), -1)
+            mask = cv.line(mask, (prev_x, prev_y), (x, y), colors[int(i)].tolist(), 2)
+            mask = cv.circle(mask, (x, y), 2, colors[int(i)].tolist(), -1)
 
     img = cv.add(frame, mask)
 
