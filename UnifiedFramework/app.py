@@ -7,6 +7,7 @@ import time
 import utils
 import tracker
 import visualizer
+import json
 
 class ConfigInfo:
     def __init__(self):
@@ -29,6 +30,22 @@ class ConfigInfo:
         self.height = int(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
         self.first_frame = video.read()[1]
         video.set(cv2.CAP_PROP_POS_FRAMES, 0)
+
+    def save_config(self, filename):
+
+        config = {}
+        config['filename'] = self.current_filename
+        config['use_median'] = self.use_median
+        config['diameter'] = self.diameter
+        config['minmass'] = self.minmass
+        config['search_range'] = self.search_range
+        config['memory'] = self.memory
+        config['fps'] = self.fps
+        config['width'] = self.width
+        config['height'] = self.height
+
+        with open(filename, 'w') as f:
+            json.dump(config, f)
 
 
 config_info = ConfigInfo()
@@ -115,7 +132,6 @@ def process():
     out = cv2.VideoWriter("cache/output.mp4", cv2.VideoWriter_fourcc(*'avc1'), config_info.fps, (2*config_info.width, config_info.height))
 
     use_median = request.form.get("use_median")
-    print("USE_MEDIAN =", use_median)
 
     for i in range(int(video.get(cv2.CAP_PROP_FRAME_COUNT))):
         ret, frame = video.read()
@@ -156,8 +172,6 @@ def detect():
     else:
         diameter = int(request.form.get("diameter"))
         minmass = int(request.form.get("minmass"))
-        print("DIAMETER =", diameter)
-        print("MINMASS =", minmass)
 
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         df = tp.locate(gray, diameter=diameter, minmass=minmass)
@@ -185,6 +199,8 @@ def detect():
 @app.route('/track', methods=["GET","POST"])
 def track():
 
+    global config_info
+
     if request.method == 'GET':
         diameter = config_info.diameter
         minmass = config_info.minmass
@@ -197,8 +213,6 @@ def track():
     else:
         search_range = int(request.form.get("search_range"))
         memory = int(request.form.get("memory"))
-        print("SEARCH_RANGE =", search_range)
-        print("MEMORY =", memory)
 
         df = tracker.trackCentroids(config_info.detect_df, search_range=config_info.search_range, memory=config_info.memory)
         config_info.track_df = df
@@ -226,6 +240,19 @@ def track():
     }
 
     return render_template('track.html',**templateData)
+
+@app.route('/final', methods=["GET","POST"])
+def finalize():
+
+    global config_info
+
+    data_filename = config_info.current_filename.split(".")[0] + ".csv"
+    config_filename = config_info.current_filename.split(".")[0] + ".json"
+
+    utils.saveDataFrame(config_info.track_df, "cache/" + data_filename)
+    config_info.save_config("cache/" + config_filename)
+
+    return render_template('final.html')
 
 if __name__ == '__main__':
     app.run(host='127.0.0.1',debug=True)
