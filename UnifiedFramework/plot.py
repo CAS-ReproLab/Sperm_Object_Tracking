@@ -89,3 +89,5 @@ if __name__ == '__main__':
 
     # Summarize statistics and generate histograms
     summarize_stats(csvfile)
+
+    # Example console command python plot.py csv_file
