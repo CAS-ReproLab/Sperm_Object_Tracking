@@ -255,6 +255,22 @@ def add_motility_column(data, vcl_column='VCL', threshold=25):
     data['Motility'] = data['VCL'].apply(lambda vcl: 'motile' if vcl >= threshold else 'immotile')
     return data
 
+'''Amplitude Lateral Head Displacment Mean  Function Pseudocode
+
+    ALH mean is the average amount that the sperm head strays or moves side to side from its curvilinear path 
+    over its entire journey
+
+    Loop through sperm ID
+        Loop through each point in trajectory
+            Create alh value list
+            if the current distance is greater then the previous and the next distance, append distance to list
+    
+    If the alh list is not empty, get mean and putiply by 2
+    
+    return data        
+'''
+
+
 
 
 if __name__ == '__main__':
