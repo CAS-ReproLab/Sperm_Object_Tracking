@@ -98,8 +98,9 @@ def calcAverageSpeed(data, fps=9):
 
     return data
 
+'''
 def averagePathVelocity(data, fps=9, pixel_size=0.26, win_size=5):
-    '''Calculate the average path velocity (VAP) over all frames
+    ''Calculate the average path velocity (VAP) over all frames
 
     Parameters:
     data (pd.DataFrame): DataFrame containing sperm tracking data with columns 'sperm', 'frame', 'x', and 'y'.
@@ -108,7 +109,7 @@ def averagePathVelocity(data, fps=9, pixel_size=0.26, win_size=5):
     win_size (int): Size of the window in micrometers (or any other unit), default is 1 aka calculates
     curvilinear velocity (VCL). Adjust window_size accordingly for VAP.
     Returns the pd.DataFrame: DataFrame with an additional column 'VAP' containing the average speed of each sperm cell.
-    '''
+    ''
 
     # Get unique sperm IDs
     sperm_ids = data['sperm'].unique()
@@ -145,6 +146,8 @@ def averagePathVelocity(data, fps=9, pixel_size=0.26, win_size=5):
         data.loc[data['sperm'] == sperm_id, 'VAP'] = average_speed
 
     return data
+'''
+
 
 def averagePathVelocity2(data, fps=9, pixel_size=0.26, win_size=5):
     '''Calculate the average path velocity (VAP) over all frames
@@ -216,16 +219,20 @@ def averagePathVelocity2(data, fps=9, pixel_size=0.26, win_size=5):
 
         # Change it to 2d array
         arr1 = arr1.reshape(-1, 2)
+
+        # Get number of coordinates
         num_points = arr1.shape[0]
+
+        # Loop through array 1 to get total distanc of avergae path
         for i in range(num_points):
             # Calculate the Euclidean distance between previous point to current point
             distance = np.sqrt((arr1[i, 0] - arr1[i - 1, 0]) ** 2 + (arr1[i, 1] - arr1[i - 1, 1]) ** 2)
             total_distance += distance
 
-        total_distance = total_distance * (1/ (len(sperm) - win_size))
-
-        # Calculate the average speed in real-world units per second
+        # Calculate the VAP
         if distance_iteration > 0:
+            # Get velocity
+            total_distance = total_distance * (1 / (len(sperm) - win_size))
             average_speed = total_distance * (fps / distance_iteration) * pixel_size
         else:
             average_speed = 0
@@ -233,7 +240,7 @@ def averagePathVelocity2(data, fps=9, pixel_size=0.26, win_size=5):
         # Add the average speed to the dataframe
         data.loc[data['sperm'] == sperm_id, 'VAP'] = average_speed
 
-    return data, arr1
+    return data
 
 
 
@@ -396,11 +403,11 @@ def add_motility_column(data, vcl_column='VCL', threshold=25):
     return data
 
 
+
 def alh(data, fps=9, pixel_size=0.26, win_size=5):
     '''Calculate the amplitude of lateral head displacement (ALH) for each sperm cell
      It returns ALH_mean and ALH_max for each sperm cell.
      '''
-    _ ,vap_coord = averagePathVelocity2(data, fps, pixel_size, win_size)
 
     # Get unique sperm IDs
     sperm_ids = data['sperm'].unique()
@@ -415,6 +422,7 @@ def alh(data, fps=9, pixel_size=0.26, win_size=5):
 
         # Lists to store distances between consecutive segments
         displacements = []
+
         # Iterate over each position to calculate lateral displacement
         for i in range(1, len(sperm) - 2):
             # Define three consecutive points for relative maximum detection
@@ -434,6 +442,8 @@ def alh(data, fps=9, pixel_size=0.26, win_size=5):
 
         # Calculate mean and max ALH, converting to micrometers
         if displacements:
+
+
             alh_mean = (np.sum(displacements) / total_segments)  * pixel_size * 2
             alh_max = np.max(displacements) * pixel_size * 2
         else:
@@ -488,16 +498,15 @@ if __name__ == '__main__':
     '''
 
     # Run calcAverageSpeed
-    vap, _ = averagePathVelocity2(data, fps= 9, pixel_size= 1.0476, win_size= 5)
+    vap = averagePathVelocity2(data, fps= 9, pixel_size= 1.0476, win_size= 5)
     vcl = curvilinearVelocity(data, fps= 9, pixel_size= 1.0476)
     vsl = straightLineVelocity2(data, fps=9, pixel_size= 1.0476)
     alh = alh(data, fps=9, pixel_size= 1.0476)
 
-    # Add motility column based on VCL values
+    # Add motility status column based on VCL values
     motility = add_motility_column(data, vcl_column='VCL')
 
     # Save the new data file with the statistics
-
     utils.saveDataFrame(vap, outputfile)
     utils.saveDataFrame(vcl, outputfile)
     utils.saveDataFrame(motility, outputfile)
