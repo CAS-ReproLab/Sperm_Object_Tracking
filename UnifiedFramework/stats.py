@@ -185,33 +185,31 @@ def averagePathVelocity2(data, fps=9, pixel_size=0.26, win_size=5):
         arr1 = np.append(arr1, [first_point[0], first_point[1]])
 
         # Loop through sperm coordinates
-        for j in range(1, len(sperm) - win_size):
+        for i in range(1, len(sperm) - win_size):
 
             #Arry for coordinate within window
             arr2  = np.array([])
             # Loop within sliding window
-            for i in range(win_size):
+            for j in range(win_size):
 
-                # Start eith location j + i since we are loop throught i 0 through win size
-                start = (sperm['x'].iloc[j + i], sperm['y'].iloc[j + i])
+                # Start with location i + j since we are looping throught j  from 0 to win size
+                start = (sperm['x'].iloc[i + j], sperm['y'].iloc[i + j])
 
-                end = (sperm['x'].iloc[j + i + 1], sperm['y'].iloc[j + i + 1])
+                end = (sperm['x'].iloc[i + j + 1], sperm['y'].iloc[i + j + 1])
 
-                total_x = start[0] + end[0]
-                total_y = start[1] + end[1]
+                # Summing them twice (need to fix)
+                #total_x = start[0] + end[0]
+                #total_y = start[1] + end[1]
 
                 # Add each total within window size to array
-                arr2 = np.append(arr2, [total_x, total_y])
-
-            # CHnage to 2D array
+                arr2 = np.append(arr2, [start[0], start[1]])
+            # Change to 2D array
             arr2 = arr2.reshape(-1,2)
-
             # Add all of x and y in window and divide by window size to create average path coordinates
-            sum_x = np.sum(arr2[:,0]) / win_size
-            sum_y = np.sum(arr2[:,1]) / win_size
+            aver_x = np.sum(arr2[:,0]) / win_size
+            aver_y = np.sum(arr2[:,1]) / win_size
 
-
-            arr1 = np.append(arr1, [sum_x, sum_y])
+            arr1 = np.append(arr1, [aver_x, aver_y])
 
         last_point = (sperm['x'].iloc[-1], sperm['y'].iloc[-1])
         arr1 = np.append(arr1, [last_point[0], last_point[1]])
@@ -420,29 +418,58 @@ def alh(data, fps=9, pixel_size=0.26, win_size=5):
         # Filter the dataframe for the current sperm and sort by frame
         sperm = data[data['sperm'] == sperm_id].sort_values(by='frame')
 
+        # Averge path------------------------------
+        arr1 = np.array([])
+        first_point = (sperm['x'].iloc[0], sperm['y'].iloc[0])
+        arr1 = np.append(arr1, [first_point[0], first_point[1]])
+
+        # Loop through sperm coordinates
+        for i in range(1, len(sperm) - win_size):
+
+            # Loop within sliding window
+            for j in range(win_size):
+
+                window_coords = np.array([[sperm['x'].iloc[i + j], sperm['y'].iloc[i + j]]])
+
+            # Add all of x and y in window and divide by window size to create average path coordinates
+            aver_x = np.sum(window_coords[:, 0]) / win_size
+            aver_y = np.sum(window_coords[:, 1]) / win_size
+
+            arr1 = np.append(arr1, [aver_x, aver_y])
+
+        last_point = (sperm['x'].iloc[-1], sperm['y'].iloc[-1])
+        arr1 = np.append(arr1, [last_point[0], last_point[1]])
+        num_points = arr1.shape[0]
+
+        # Change it to 2d array
+        arr1 = arr1.reshape(-1, 2)
+
+        # Adjust by repeating the last average point if needed
+        if len(arr1) < len(sperm):
+
+            # Fill in the gap with the last coordinate repreated to fill the gap
+            arr1 = np.vstack([arr1, [arr1[-1]] * (len(sperm) - len(arr1))])
+
         # Lists to store distances between consecutive segments
         displacements = []
 
         # Iterate over each position to calculate lateral displacement
-        for i in range(1, len(sperm) - 2):
-            # Define three consecutive points for relative maximum detection
-            point0 = (sperm['x'].iloc[i - 1], sperm['y'].iloc[i - 1])
-            point1 = (sperm['x'].iloc[i], sperm['y'].iloc[i])
-            point2 = (sperm['x'].iloc[i + 1], sperm['y'].iloc[i + 1])
+        for k in range(1, len(sperm)):
 
-            # Calculate distances
-            dist0 = np.sqrt((point1[0] - point0[0]) ** 2 + (point1[1] - point0[1]) ** 2)
-            dist1 = np.sqrt((point2[0] - point1[0]) ** 2 + (point2[1] - point1[1]) ** 2)
+            actual_point = (sperm['x'].iloc[k], sperm['y'].iloc[k])
 
-            # Identify relative maximum in displacement
-            if dist1 > dist0:
-                displacements.append(dist1)
+            # Get the average path coodinate points
+            avg_point = (arr1[k, 0], arr1[k, 1])
+
+            # Calculate Euclidean distance
+            displacement = np.sqrt((actual_point[0] - avg_point[0]) ** 2 + (actual_point[1] - avg_point[1]) ** 2)
+            displacements.append(displacement)
+
 
         total_segments = len(sperm) - 1
 
         # Calculate mean and max ALH, converting to micrometers
         if displacements:
-
 
             alh_mean = (np.sum(displacements) / total_segments)  * pixel_size * 2
             alh_max = np.max(displacements) * pixel_size * 2
@@ -455,6 +482,8 @@ def alh(data, fps=9, pixel_size=0.26, win_size=5):
         data.loc[data['sperm'] == sperm_id, 'ALH_max'] = alh_max
 
     return data
+
+
 '''Amplitude Lateral Head Displacment Mean  Function Pseudocode
 
     ALH mean is the average amount that the sperm head strays or moves side to side from its curvilinear path 
