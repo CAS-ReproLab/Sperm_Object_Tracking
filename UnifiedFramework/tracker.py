@@ -6,6 +6,7 @@ import argparse
 from tqdm import tqdm, trange
 
 import trackpy as tp
+import logging
 import utils
 
 import pandas as pd
@@ -70,6 +71,8 @@ def determineCentroids_morphology(frames, kernel_size=(3,3)):
     return f
 
 def determineCentroids(frames, diameter=5, minmass=18, maxsize=10):
+    # Set the logging level
+    logging.basicConfig(level=logging.INFO)
     f = tp.batch(frames, diameter=diameter, minmass=minmass, maxsize=maxsize)
     
     return f

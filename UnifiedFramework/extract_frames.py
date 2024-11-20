@@ -20,7 +20,7 @@ def save_first_25_frames(source_path):
 
     # Get the base name of the file to create a new file name
     base_name = os.path.basename(source_path)
-    new_file_name = os.path.splitext(base_name)[0] + '_first25.avi'
+    new_file_name = os.path.splitext(base_name)[0] + '_f25.mp4'
     new_file_path = os.path.join(os.path.dirname(source_path), new_file_name)
 
     # Get frame rate of the source video to use in the output
@@ -31,7 +31,7 @@ def save_first_25_frames(source_path):
     frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     
     # Define the codec and create VideoWriter object
-    fourcc = cv2.VideoWriter_fourcc(*'XVID')
+    fourcc = cv2.VideoWriter_fourcc(*'h264')
     out = cv2.VideoWriter(new_file_path, fourcc, frame_rate, (frame_width, frame_height))
 
     # Read and save the first 25 frames
@@ -51,7 +51,7 @@ def save_first_25_frames(source_path):
 
 if __name__ == '__main__':
     if len(sys.argv) != 2:
-        print("Usage: python script_name.py path/to/your/video.avi")
+        print("Usage: python script_name.py path/to/your/video.mp4")
         sys.exit(1)
     
     source_video_path = sys.argv[1]
