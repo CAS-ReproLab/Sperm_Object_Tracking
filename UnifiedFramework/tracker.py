@@ -1,8 +1,6 @@
 import numpy as np
 import cv2 as cv
 from scipy.optimize import linear_sum_assignment
-import pickle
-import json
 
 import argparse
 from tqdm import tqdm, trange
@@ -71,7 +69,7 @@ def determineCentroids_morphology(frames, kernel_size=(3,3)):
        
     return f
 
-def determineCentroids(frames, diameter=5, minmass=50, maxsize=10):
+def determineCentroids(frames, diameter=5, minmass=18, maxsize=10):
     f = tp.batch(frames, diameter=diameter, minmass=minmass, maxsize=maxsize)
     
     return f
