@@ -10,57 +10,73 @@ Created on Thu Nov 21 08:56:31 2024
 import numpy as np
 import cv2 as cv
 import os
-import matplolib.pyplot as plt
+import logging
 
-videofile = "Videos/5X Ph 9Fps Wash 1 16 120S P019as R1.mp4"
-
-print(os.path.exists(videofile))  # Should print True if the file exists; may indicate issue with file path or import if false
-
-def process_and_save_video(source_video):
-    # Initialize the video capture
-    cap = cv.VideoCapture(source_video)
-
-    # Check if video opened successfully
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+                    
+def initialize_video_capture(video_path):
+    '''Initialize video capture object from opencv'''
+    if not os.path.exists(video_path):
+        logging.error(f'File not found in: {video_path}')
+        return None
+    cap= cv.VideoCapture(video_path)
     if not cap.isOpened():
-        print("Error: Could not open video.")
+        logging.error(f'Could not open video: {video_path}')
+        return None
+    return cap
+
+def get_video_properties(cap):
+    '''get the video properties from the metadata uisng opencv'''
+    properties= {
+        'frame_width': int(cap.get(cv.CAP_PROP_FRAME_WIDTH)),
+        'frame_height': int(cap.get(cv.CAP_PROP_FRAME_HEIGHT)),
+        'frame_rate': int(cap.get(cv.CAP_PROP_FPS))
+        }
+    return properties
+
+def preprocess_frame(frame, preprocessing_function=None):
+    '''proprocess a single frame using the designated function, defined below'''
+    gray= cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+    if preprocessing_function: 
+        return preprocessing_function(gray)
+    return gray
+
+def process_and_save_video(source_video, output_path, preprocessing_function=None):
+    '''process and save the video as mp4v encoded .mp4; Note: could update to take output encoding/file as argument in future'''
+    cap=initialize_video_capture(source_video)
+    if cap is None:
         return
-
-    # Get the width and height of frames
-    frame_width = int(cap.get(cv.CAP_PROP_FRAME_WIDTH))
-    print(f'obtained frame width is {frame_width}')
-    frame_height = int(cap.get(cv.CAP_PROP_FRAME_HEIGHT))
-    print(f'obtained frame height is {frame_height}')
-    frame_rate = int(cap.get(cv.CAP_PROP_FPS))
-    print(f' obtained frame rate is {frame_rate}')
-
-    # Define the codec and create VideoWriter object
-    fourcc = cv.VideoWriter_fourcc(*'h264') # writes out an h264 encoded .mp4 file
-    output_path = os.path.splitext(source_video)[0] + '_adj.mp4' # concatenate the file name
-    out = cv.VideoWriter(output_path, fourcc, frame_rate, (frame_width, frame_height), isColor=False)
-
-    '''Preprocessing Routine '''
-    while True:
-        ret, frame = cap.read()
-        if not ret:
+    
+    properties= get_video_properties(cap)
+    logging.info(f'Video properties obtained from OpenCV: {properties}')
+    
+    fourcc= cv.VideoWriter_fourcc(*'mp4v') # originally tried h264, but wasn't working
+    out= cv.VideoWriter(output_path, fourcc, properties['frame_rate'], (properties['frame_width'], properties['frame_height']), isColor=False)
+    
+    while True: 
+        ret, frame= cap.read()
+        if not ret: 
             break
-
-        # Convert to grayscale
-        gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+        processed_frame = preprocess_frame(frame, preprocessing_function)
+        out.write(processed_frame)  
         
-        # Calculate median grayscale value
-        mid_val = np.median(gray)
-        
-        # Subtract the median from the grayscale image and ensure it stays in valid range
-        adjusted_frame = cv.convertScaleAbs(np.abs(gray - mid_val))
-
-        # Write the modified frame to the new video file
-        out.write(adjusted_frame)
-
-    # Release everything when job is finished
     cap.release()
     out.release()
-    print(f"New video file saved: {output_path}")
+    logging.info(f'Processed video saved to: {output_path}')
+    
+# Preprocessing functions. Add more as necessary. 
+    
+def median_filter(frame): 
+    '''subtract median grayscale value'''
+    mid_val= np.median(frame)
+    return cv.convertScaleAbs(np.abs(frame- mid_val))
 
-# Path to the source video file
-source_video = videofile
-process_and_save_video(source_video)
+def main(): 
+    input_video= 'Videos/5X Ph 9Fps Wash 1 16 120S P019as R2.mp4'
+    output_video= os.path.splitext(input_video)[0] + '_median.mp4' #insert the preprocessing function name
+    process_and_save_video(input_video, output_video, preprocessing_function=median_filter)
+    
+if __name__ == "__main__":
+    main()
+    
