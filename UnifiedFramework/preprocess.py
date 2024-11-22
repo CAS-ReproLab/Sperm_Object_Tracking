@@ -11,6 +11,7 @@ import numpy as np
 import cv2 as cv
 import os
 import logging
+import argparse
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -70,12 +71,17 @@ def process_and_save_video(source_video, output_path, preprocessing_function=Non
 def median_filter(frame): 
     '''subtract median grayscale value'''
     mid_val= np.median(frame)
-    return cv.convertScaleAbs(np.abs(frame- mid_val))
+    return cv.convertScaleAbs(np.abs(frame - mid_val))
+
+
 
 def main(): 
-    input_video= 'Videos/5X Ph 9Fps Wash 1 16 120S P019as R2.mp4'
+    parser= argparse.ArgumentParser(description='Preprocess videos files for tracker.py')
+    parser.add_argument('input_video', type=str, help='Path to input_video')
+    args= parser.parse_args()
+    input_video= args.input_video
     output_video= os.path.splitext(input_video)[0] + '_median.mp4' #insert the preprocessing function name
-    process_and_save_video(input_video, output_video, preprocessing_function=median_filter)
+    process_and_save_video(input_video, output_video, preprocessing_function=median_filter) # Indicate which preprocessing function to use..
     
 if __name__ == "__main__":
     main()
