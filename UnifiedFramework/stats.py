@@ -402,7 +402,7 @@ def add_motility_column(data, vcl_column='VCL', threshold=25):
 
 
 
-def alh(data, fps=9, pixel_size=0.26, win_size=5):
+def alh_and_vap(data, fps=9, pixel_size=0.26, win_size=5):
     '''Calculate the amplitude of lateral head displacement (ALH) for each sperm cell
      It returns ALH_mean and ALH_max for each sperm cell.
      '''
@@ -417,71 +417,184 @@ def alh(data, fps=9, pixel_size=0.26, win_size=5):
     for sperm_id in sperm_ids:
         # Filter the dataframe for the current sperm and sort by frame
         sperm = data[data['sperm'] == sperm_id].sort_values(by='frame')
-
-        # Averge path------------------------------
-        arr1 = np.array([])
-        first_point = (sperm['x'].iloc[0], sperm['y'].iloc[0])
-        arr1 = np.append(arr1, [first_point[0], first_point[1]])
-
+        distance = []
+        avg_path_coords = []
         # Loop through sperm coordinates
         for i in range(1, len(sperm) - win_size):
 
-            # Loop within sliding window
+            # Initialize arrays for window coordinates and average path
+            window_coords = []
+            arr1 = []
+
+            # Add first point to average path
+            first_point = (sperm['x'].iloc[0], sperm['y'].iloc[0])
+            arr1.append(first_point)
+
+            # Loop within sliding window to get average path
             for j in range(win_size):
+                x, y = sperm['x'].iloc[i + j], sperm['y'].iloc[i + j]
+                window_coords.append([x, y])
 
-                window_coords = np.array([[sperm['x'].iloc[i + j], sperm['y'].iloc[i + j]]])
+            # Convert window_coords to a NumPy array
+            window_coords = np.array(window_coords)
 
-            # Add all of x and y in window and divide by window size to create average path coordinates
+            # Create average path coordinates
             aver_x = np.sum(window_coords[:, 0]) / win_size
             aver_y = np.sum(window_coords[:, 1]) / win_size
+            arr1.append((aver_x, aver_y))
+            avg_path_coords.append((aver_x, aver_y))
 
-            arr1 = np.append(arr1, [aver_x, aver_y])
+            # Add last point to average path
+            last_point = (sperm['x'].iloc[-1], sperm['y'].iloc[-1])
+            arr1.append(last_point)
 
-        last_point = (sperm['x'].iloc[-1], sperm['y'].iloc[-1])
-        arr1 = np.append(arr1, [last_point[0], last_point[1]])
-        num_points = arr1.shape[0]
+            # Convert arr1 to a NumPy array
+            arr1 = np.array(arr1)
 
-        # Change it to 2d array
-        arr1 = arr1.reshape(-1, 2)
+            # Get midpoints of average path
+            # Calculate midpoints of the average path
+            mid_x = (arr1[0, 0] + arr1[2, 0]) / 2
+            mid_y = (arr1[0, 1] + arr1[2, 1]) / 2
 
-        # Adjust by repeating the last average point if needed
-        if len(arr1) < len(sperm):
+            # Get the first and last coordinates within the window
+            first = window_coords[0]
+            last = window_coords[-1]
 
-            # Fill in the gap with the last coordinate repreated to fill the gap
-            arr1 = np.vstack([arr1, [arr1[-1]] * (len(sperm) - len(arr1))])
+            # Perpendicular distance formula for first point
+            numerator = abs(
+                (last[0] - first[0]) * (first[1] - mid_y) - (first[0] - mid_x) * (last[1] - first[1]))
+            denominator = np.sqrt((last[0] - first[0]) ** 2 + (last[1] - first[1]) ** 2)
 
+            # Check for a zero or near-zero denominator
+            if denominator == 0:
+                dist_first = 0  # or use np.nan to indicate invalid distance
+            else:
+                dist_first = numerator / denominator
+
+            # Store distance for first point
+            distance.append(dist_first)
+
+       # Turn distance to numpy array
+        distance = np.array(distance)
         # Lists to store distances between consecutive segments
         displacements = []
+        # Loop through and fine the most displaced distance
+        count = 0
+        for l in range(1, len(distance)-1):
+            if distance[l] > distance[l-1] and distance[l] > distance[l+1]:
+                count += 1
+                displacements.append(distance[l])
 
-        # Iterate over each position to calculate lateral displacement
-        for k in range(1, len(sperm)):
+        # Calculate VAP
+        total_vap_distance = 0
+        avg_path_coords = np.array(avg_path_coords)
+        if len(avg_path_coords) > 1:
+            total_vap_distance = np.sum(
+                np.sqrt(
+                    np.diff(avg_path_coords[:, 0]) ** 2 + np.diff(avg_path_coords[:, 1]) ** 2
+                ))
+            vap = total_vap_distance * (fps / (len(sperm) - win_size)) * pixel_size
+        else:
+            vap = np.nan
 
-            actual_point = (sperm['x'].iloc[k], sperm['y'].iloc[k])
-
-            # Get the average path coodinate points
-            avg_point = (arr1[k, 0], arr1[k, 1])
-
-            # Calculate Euclidean distance
-            displacement = np.sqrt((actual_point[0] - avg_point[0]) ** 2 + (actual_point[1] - avg_point[1]) ** 2)
-            displacements.append(displacement)
-
-
-        total_segments = len(sperm) - 1
 
         # Calculate mean and max ALH, converting to micrometers
         if displacements:
 
-            alh_mean = (np.sum(displacements) / total_segments)  * pixel_size * 2
+            alh_mean = (np.sum(displacements) / count)  * pixel_size * 2
             alh_max = np.max(displacements) * pixel_size * 2
         else:
             alh_mean = np.nan
             alh_max = np.nan
-
         # Assign ALH values back to the dataframe
+        data.loc[data['sperm'] == sperm_id, 'New_VAP'] = vap
         data.loc[data['sperm'] == sperm_id, 'ALH_mean'] = alh_mean
         data.loc[data['sperm'] == sperm_id, 'ALH_max'] = alh_max
 
+
     return data
+
+
+def intersect_segments(p1, p2, q1, q2):
+    '''
+    # This returns boolean if segment 1 (p1 and 2) are opposite sides of mid_segment (q1 ans q2)
+    # and if mid_segment (q1 ans q2) are opposite sides of segment 1 (p1 and 2)
+    '''
+    return ( ((q1[1] - p1[1]) * (p2[0] - p1[0]) > (p2[1] - p1[1]) * (q1[0] - p1[0])) !=
+        ((q2[1] - p1[1]) * (p2[0] - p1[0]) > (p2[1] - p1[1]) * (q2[0] - p1[0])) and
+        ((q1[1] - p1[1]) * (q2[0] - q1[0]) > (q2[1] - q1[1]) * (q1[0] - p1[0])) !=
+        ((q1[1] - p2[1]) * (q2[0] - q1[0]) > (q2[1] - q1[1]) * (q1[0] - p2[0]))
+             )
+def bcf (data, fps=9, pixel_size=0.26, win_size=5):
+    '''Calculate the Beat-Cross Frequency (BCF) for each sperm cell.
+       Returns the updated dataframe with BCF values for each sperm cell.
+    '''
+
+    sperm_ids = data['sperm'].unique()
+
+    data['BCF'] = np.nan
+
+    for sperm_id in sperm_ids:
+        sperm = data[data['sperm'] == sperm_id].sort_values(by='frame')
+        avg_path_coords = []
+        cross_count = 0
+
+        '''
+        # Loop through sperm coordinates to calculate average path
+        for i in range(1, len(sperm) - win_size):
+            # Collect window coordinates
+            window_coords = []
+            for j in range(win_size):
+                x, y = sperm['x'].iloc[i + j], sperm['y'].iloc[i + j]
+                window_coords.append([x, y])
+
+            # Convert to NumPy array
+            window_coords = np.array(window_coords)
+
+            # Calculate average path coordinates
+            aver_x = np.mean(window_coords[:, 0])/win_size
+            aver_y = np.mean(window_coords[:, 1])/win_size
+            avg_path_coords.append((aver_x, aver_y))
+        '''
+
+        for i in range(len(sperm) - win_size):
+            window_coords = sperm[['x', 'y']].iloc[i:i + win_size].to_numpy()
+            aver_x = np.mean(window_coords[:, 0])
+            aver_y = np.mean(window_coords[:, 1])
+            avg_path_coords.append((aver_x, aver_y))
+
+        avg_path_coords = np.array(avg_path_coords)
+
+        # Check intersections between actual and average path segments
+        for i in range(len(avg_path_coords) - 1):
+            #if i >= len(sperm) - 1:
+                #break
+
+            # Actual path segment with the start of segment and end of segment
+            actual_start = (sperm['x'].iloc[i], sperm['y'].iloc[i])
+            actual_end = (sperm['x'].iloc[i + 1], sperm['y'].iloc[i + 1])
+
+            # Average path segment
+            avg_start = avg_path_coords[i]
+            avg_end = avg_path_coords[i + 1]
+
+            # Check segments intersect
+            if intersect_segments(actual_start, actual_end, avg_start, avg_end):
+                cross_count += 1
+
+        # Calculate BCF
+        total_time = (len(sperm) - win_size)
+        if total_time > 0:
+            bcf = cross_count / (fps /total_time)
+        else:
+            bcf = np.nan
+
+        # Store results in the dataframe
+        data.loc[data['sperm'] == sperm_id, 'BCF'] = bcf
+
+    return data
+
+
 
 
 '''Amplitude Lateral Head Displacment Mean  Function Pseudocode
@@ -498,7 +611,6 @@ def alh(data, fps=9, pixel_size=0.26, win_size=5):
     
     return data        
 '''
-
 
 
 
@@ -530,7 +642,8 @@ if __name__ == '__main__':
     vap = averagePathVelocity2(data, fps= 9, pixel_size= 1.0476, win_size= 5)
     vcl = curvilinearVelocity(data, fps= 9, pixel_size= 1.0476)
     vsl = straightLineVelocity2(data, fps=9, pixel_size= 1.0476)
-    alh = alh(data, fps=9, pixel_size= 1.0476)
+    alh = alh_and_vap(data, fps=9, pixel_size= 1.0476,win_size= 5)
+    bcf = bcf(data, fps=9, pixel_size=1.0476, win_size=5)
 
     # Add motility status column based on VCL values
     motility = add_motility_column(data, vcl_column='VCL')
@@ -541,6 +654,8 @@ if __name__ == '__main__':
     utils.saveDataFrame(motility, outputfile)
     utils.saveDataFrame(vsl, outputfile)
     utils.saveDataFrame(vsl, outputfile)
+    utils.saveDataFrame(alh, outputfile)
+    utils.saveDataFrame(bcf, outputfile)
 
     print("Statistics computed and saved to", outputfile)
 
