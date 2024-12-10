@@ -58,6 +58,19 @@ def onMouse(event, x, y, flags, param):
                 break
 
 def runLabeler(video, data):
+    print(
+    '''
+    This program runs the manual labeler for the sperm data. Here are the controls:
+    k: Play/Pause
+    l: Next frame
+    j: Previous frame
+    s: Split the current sperm
+    d: Delete the current sperm
+    m: Merge two sperm
+    r: Randomize colors
+    q: Quit
+    '''
+    )
 
     global current_sperm
 
@@ -78,7 +91,7 @@ def runLabeler(video, data):
 
     # Create some random colors
     max_index = data['sperm'].max()
-    colors = np.random.randint(0, 255, (2*max_index, 3)) # Allows for splitting and creating new sperm
+    colors = np.random.randint(100, 255, (2*max_index, 3)) # Allows for splitting and creating new sperm
 
     video = visualizer.createVisualization(video_original,data,visualization="flow", colors=colors)
 
@@ -158,6 +171,16 @@ def runLabeler(video, data):
                 frame = video[frame_num]
                 cv.imshow('Labeler', frame)
                 print("Done!")
+
+        if key == ord('r'):
+            print("Randomizing colors...")
+            colors = np.random.randint(100, 255, (2*max_index, 3)) # Allows for splitting and creating new sperm
+            video = visualizer.createVisualization(video_original,data,visualization="flow", colors=colors)
+            frame = video[frame_num]
+            cv.imshow('Labeler', frame)
+            print("Done!")
+
+        
 
     cv.destroyAllWindows()
 
