@@ -57,6 +57,8 @@ def runLabeler(video, data):
 
     global current_sperm
 
+    savefile = csvfile.replace(".csv","_corrected.csv")
+
     # Open the video file
     cap = cv.VideoCapture(videofile)
 
@@ -123,7 +125,10 @@ def runLabeler(video, data):
             sperm2 = int(input("Enter the second sperm to merge: "))
             print("Processing...")
             data = mergeSperm(data,sperm1,sperm2)
+            utils.saveDataFrame(data,savefile)
             video = visualizer.createVisualization(video_original,data,visualization="flow", colors=colors)
+            frame = video[frame_num]
+            cv.imshow('Labeler', frame)
             print("Done!")
 
     cv.destroyAllWindows()
