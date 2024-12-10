@@ -13,6 +13,15 @@ from tkinter import filedialog
 
 current_sperm = None
 
+def mergeSperm(data,sperm1,sperm2):
+    pass
+
+def splitSperm(data,sperm,frame_num):
+    pass
+
+def deleteSperm(data,sperm):
+    pass
+
 def onMouse(event, x, y, flags, param):
 
     global current_sperm
@@ -27,11 +36,14 @@ def onMouse(event, x, y, flags, param):
 
         for idx, sperm in current.iterrows():
 
-            i = sperm['sperm']
-            x1 = sperm['bbox_x']
-            y1 = sperm['bbox_y']
-            x2 = sperm['bbox_x'] + sperm['bbox_w']
-            y2 = sperm['bbox_y'] + sperm['bbox_h']
+            i = int(sperm['sperm'])
+            xc = sperm["x"]
+            yc = sperm["y"]
+
+            x1 = xc - 5
+            x2 = xc + 5
+            y1 = yc - 5
+            y2 = yc + 5
 
             if x >= x1 and x <= x2 and y >= y1 and y <= y2:
                 print(f'Sperm {i} clicked')
@@ -69,6 +81,8 @@ def runLabeler(video, data):
     # Play through video until space is pressed
     while True:
 
+        cv.setMouseCallback('Labeler', onMouse, [data,frame_num])
+
         if playvid:
             time.sleep(wait_time)
 
@@ -100,61 +114,6 @@ def runLabeler(video, data):
             cv.imshow('Labeler', frame)
 
     cv.destroyAllWindows()
-
-
-    '''
-    # Loop through the video
-    while(cap.isOpened()):
-        ret, frame = cap.read()
-        if not ret:
-            cap.set(cv.CAP_PROP_POS_FRAMES, 0)
-            frame_num = 0
-            continue
-
-        img = frame
-
-        cv.setMouseCallback('Interactive', onMouse, [data,frame_num])
-
-        # Get only data for the current frame
-        current = data[data['frame'] == frame_num]
-
-        sperm = current[current['sperm'] == current_sperm]
-        if len(sperm) > 0:
-            sperm = sperm.iloc[0] # Fail safe for duplicate sperm ids
-            x = int(sperm['bbox_x'])
-            y = int(sperm['bbox_y'])
-            w = int(sperm['bbox_w'])
-            h = int(sperm['bbox_h'])
-            img = cv.rectangle(img, (x, y), (x + w, y + h), (0, 128, 0), 3)
-
-            average_speed = sperm['average_speed']
-
-
-        if current_sperm is not None:
-
-            # Output text properties
-            font = cv.FONT_HERSHEY_SIMPLEX
-            org = (50, 50)
-            fontScale = 1
-            color = (255, 0, 0)
-            thickness = 2
-            text1 = f'Sperm {current_sperm}'
-            text2 = f'Average Speed: {average_speed:.2f} pixels/s'
-            img = cv.putText(img, text1, org, font, fontScale, color, thickness, cv.LINE_AA)
-            img = cv.putText(img, text2, (org[0], org[1]+50), font, fontScale, color, thickness, cv.LINE_AA)
-
-
-        cv.imshow('Interactive', img)
-
-        if cv.waitKey(1) & 0xFF == ord('q'):
-            break
-
-        frame_num += 1
-
-        time.sleep(wait_time)
-
-    cv.destroyAllWindows()
-    '''
 
 if __name__ == '__main__':
 
