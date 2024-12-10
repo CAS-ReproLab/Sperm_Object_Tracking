@@ -19,11 +19,15 @@ def mergeSperm(data,sperm1,sperm2):
     data.loc[data['sperm'] == sperm2, 'sperm'] = sperm1
     return data
 
-def splitSperm(data,sperm,frame_num):
-    pass
+def splitSperm(data,sperm1,frame_num):
+    # Make a new sperm with a new ID at frame_num with sperm1's data
+    data.loc[(data['sperm'] == sperm1) & (data['frame']>frame_num), 'sperm'] = data['sperm'].max() + 1
+    return data
 
-def deleteSperm(data,sperm):
-    pass
+def deleteSperm(data,sperm1):
+    # Delete all rows with sperm1
+    data = data[data['sperm'] != sperm1]
+    return data
 
 def onMouse(event, x, y, flags, param):
 
@@ -120,16 +124,40 @@ def runLabeler(video, data):
             frame = video[frame_num]
             cv.imshow('Labeler', frame)
 
+        if key == ord('s'):
+            test = input(f"Split {current_sperm} at frame #{frame_num}? (y/n): ")
+            if test == 'y':
+                print("Processing...")
+                data = splitSperm(data,current_sperm,frame_num)
+                utils.saveDataFrame(data,savefile)
+                video = visualizer.createVisualization(video_original,data,visualization="flow", colors=colors)
+                frame = video[frame_num]
+                cv.imshow('Labeler', frame)
+                print("Done!")
+
+        if key == ord('d'):
+            test = input(f"Delete {current_sperm}? (y/n): ")
+            if test == 'y':
+                print("Processing...")
+                data = deleteSperm(data,current_sperm)
+                utils.saveDataFrame(data,savefile)
+                video = visualizer.createVisualization(video_original,data,visualization="flow", colors=colors)
+                frame = video[frame_num]
+                cv.imshow('Labeler', frame)
+                print("Done!")
+
         if key == ord('m'):
             sperm1 = int(input("Enter the first sperm to merge: "))
             sperm2 = int(input("Enter the second sperm to merge: "))
-            print("Processing...")
-            data = mergeSperm(data,sperm1,sperm2)
-            utils.saveDataFrame(data,savefile)
-            video = visualizer.createVisualization(video_original,data,visualization="flow", colors=colors)
-            frame = video[frame_num]
-            cv.imshow('Labeler', frame)
-            print("Done!")
+            test = input(f"Merge {sperm1} and {sperm2}? (y/n): ")
+            if test == 'y':
+                print("Processing...")
+                data = mergeSperm(data,sperm1,sperm2)
+                utils.saveDataFrame(data,savefile)
+                video = visualizer.createVisualization(video_original,data,visualization="flow", colors=colors)
+                frame = video[frame_num]
+                cv.imshow('Labeler', frame)
+                print("Done!")
 
     cv.destroyAllWindows()
 
