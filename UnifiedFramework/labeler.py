@@ -15,7 +15,9 @@ from tkinter import filedialog
 current_sperm = None
 
 def mergeSperm(data,sperm1,sperm2):
-    pass
+    # Change all sperm2 to sperm1 in Pandas file
+    data.loc[data['sperm'] == sperm2, 'sperm'] = sperm1
+    return data
 
 def splitSperm(data,sperm,frame_num):
     pass
@@ -115,6 +117,14 @@ def runLabeler(video, data):
             frame_num = frame_num % num_frames
             frame = video[frame_num]
             cv.imshow('Labeler', frame)
+
+        if key == ord('m'):
+            sperm1 = int(input("Enter the first sperm to merge: "))
+            sperm2 = int(input("Enter the second sperm to merge: "))
+            print("Processing...")
+            data = mergeSperm(data,sperm1,sperm2)
+            video = visualizer.createVisualization(video_original,data,visualization="flow", colors=colors)
+            print("Done!")
 
     cv.destroyAllWindows()
 
