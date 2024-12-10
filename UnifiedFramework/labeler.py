@@ -7,6 +7,7 @@ import cv2 as cv
 import time
 
 import utils
+import visualizer
 
 import tkinter as tk
 from tkinter import filedialog
@@ -63,13 +64,15 @@ def runLabeler(video, data):
     fps =  cap.get(cv.CAP_PROP_FPS)
     num_frames = int(cap.get(cv.CAP_PROP_FRAME_COUNT))
 
-    video = utils.loadVideo(videofile)
+    video_original = utils.loadVideo(videofile)
 
     wait_time = 1/fps
 
     # Create some random colors
-    num_sperm = data['sperm'].nunique()
     max_index = data['sperm'].max()
+    colors = np.random.randint(0, 255, (2*max_index, 3)) # Allows for splitting and creating new sperm
+
+    video = visualizer.createVisualization(video_original,data,visualization="flow", colors=colors)
 
     frame_num = 0
 
