@@ -68,6 +68,7 @@ def runLabeler(video, data):
     d: Delete the current sperm
     m: Merge two sperm
     r: Randomize colors
+    o: Toggle original video
     q: Quit
     '''
     )
@@ -102,6 +103,7 @@ def runLabeler(video, data):
     cv.resizeWindow('Labeler', int(width), int(height))
 
     playvid = True
+    show_original = False
 
     # Play through video until space is pressed
     while True:
@@ -114,7 +116,12 @@ def runLabeler(video, data):
             frame_num += 1
             frame_num = frame_num % num_frames
 
-            frame = video[frame_num]
+            if show_original:
+                frame = video_original[frame_num]
+                cv.imshow('Labeler', frame)
+            else:
+                frame = video[frame_num]
+                cv.imshow('Labeler', frame)
 
             cv.imshow('Labeler', frame)
 
@@ -129,13 +136,23 @@ def runLabeler(video, data):
         if key == ord('l'):
             frame_num += 1
             frame_num = frame_num % num_frames
-            frame = video[frame_num]
+            if show_original:
+                frame = video_original[frame_num]
+                cv.imshow('Labeler', frame)
+            else:
+                frame = video[frame_num]
+                cv.imshow('Labeler', frame)
             cv.imshow('Labeler', frame)
 
         if key == ord('j'):
             frame_num -= 1
             frame_num = frame_num % num_frames
-            frame = video[frame_num]
+            if show_original:
+                frame = video_original[frame_num]
+                cv.imshow('Labeler', frame)
+            else:
+                frame = video[frame_num]
+                cv.imshow('Labeler', frame)
             cv.imshow('Labeler', frame)
 
         if key == ord('s'):
@@ -145,6 +162,7 @@ def runLabeler(video, data):
                 data = splitSperm(data,current_sperm,frame_num)
                 utils.saveDataFrame(data,savefile)
                 video = visualizer.createVisualization(video_original,data,visualization="flow", colors=colors)
+                show_original = False
                 frame = video[frame_num]
                 cv.imshow('Labeler', frame)
                 print("Done!")
@@ -156,6 +174,7 @@ def runLabeler(video, data):
                 data = deleteSperm(data,current_sperm)
                 utils.saveDataFrame(data,savefile)
                 video = visualizer.createVisualization(video_original,data,visualization="flow", colors=colors)
+                show_original = False
                 frame = video[frame_num]
                 cv.imshow('Labeler', frame)
                 print("Done!")
@@ -169,6 +188,7 @@ def runLabeler(video, data):
                 data = mergeSperm(data,sperm1,sperm2)
                 utils.saveDataFrame(data,savefile)
                 video = visualizer.createVisualization(video_original,data,visualization="flow", colors=colors)
+                show_original = False
                 frame = video[frame_num]
                 cv.imshow('Labeler', frame)
                 print("Done!")
@@ -177,9 +197,20 @@ def runLabeler(video, data):
             print("Randomizing colors...")
             colors = utils.generateRandomColors(2*max_index)
             video = visualizer.createVisualization(video_original,data,visualization="flow", colors=colors)
+            show_original = False
             frame = video[frame_num]
             cv.imshow('Labeler', frame)
             print("Done!")
+
+        if key == ord("o"):
+            show_original = not show_original
+            if show_original:
+                frame = video_original[frame_num]
+                cv.imshow('Labeler', frame)
+            else:
+                frame = video[frame_num]
+                cv.imshow('Labeler', frame)
+            
 
         
 
