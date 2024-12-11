@@ -64,18 +64,25 @@ def runLabeler(video, data):
     k: Play/Pause
     l: Next frame
     j: Previous frame
+    t: Mark track as "Keep" for current sperm
+    u: Mark track as "Unusable" for current sperm
     s: Split the current sperm
     d: Delete the current sperm
     m: Merge two sperm
     r: Randomize colors
     o: Toggle original video
     q: Quit
+    Mouse Click: Identify sperm number (make sure to click on the last location of the sperm in the frame)
     '''
     )
 
     global current_sperm
 
+    # Add "keep" column to dataframe, assume all unusable
+    data['keep'] = 0
+
     savefile = csvfile.replace(".csv","_corrected.csv")
+    keepfile = csvfile.replace(".csv","_keep.csv")
 
     # Open the video file
     cap = cv.VideoCapture(videofile)
@@ -85,6 +92,8 @@ def runLabeler(video, data):
     height = cap.get(cv.CAP_PROP_FRAME_HEIGHT )
     fps =  cap.get(cv.CAP_PROP_FPS)
     num_frames = int(cap.get(cv.CAP_PROP_FRAME_COUNT))
+
+    cap.release()
 
     video_original = utils.loadVideo(videofile)
 
@@ -193,6 +202,20 @@ def runLabeler(video, data):
                 cv.imshow('Labeler', frame)
                 print("Done!")
 
+        if key == ord('t'):
+            test = input("Keep track for sperm " + str(current_sperm) + "? (y/n): ")
+            if test == 'y':
+                data.loc[data['sperm'] == current_sperm, 'keep'] = 1
+                utils.saveDataFrame(data,savefile)
+                print("Track marked for sperm " + str(current_sperm) + " in savefile.")
+        
+        if key == ord('u'):
+            test = input("Mark track unusable for sperm " + str(current_sperm) + "? (y/n): ")
+            if test == 'y':
+                data.loc[data['sperm'] == current_sperm, 'keep'] = 0
+                utils.saveDataFrame(data,savefile)
+                print("Track marked unusable for sperm " + str(current_sperm) + " in savefile.")
+
         if key == ord('r'):
             print("Randomizing colors...")
             colors = utils.generateRandomColors(2*max_index)
@@ -212,7 +235,9 @@ def runLabeler(video, data):
                 cv.imshow('Labeler', frame)
             
 
-        
+    # Save output dataframe with only "keep" values
+    data = data[data['keep'] == 1]
+    utils.saveDataFrame(data,keepfile)
 
     cv.destroyAllWindows()
 
