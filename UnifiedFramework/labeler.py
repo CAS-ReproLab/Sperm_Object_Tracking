@@ -91,7 +91,8 @@ def runLabeler(video, data):
 
     # Create some random colors
     max_index = data['sperm'].max()
-    colors = np.random.randint(100, 255, (2*max_index, 3)) # Allows for splitting and creating new sperm
+    colors = utils.generateRandomColors(2*max_index) # Allows for splitting and creating new sperm
+    #colors = np.random.randint(100, 255, (2*max_index, 3)) # Allows for splitting and creating new sperm
 
     video = visualizer.createVisualization(video_original,data,visualization="flow", colors=colors)
 
@@ -174,7 +175,7 @@ def runLabeler(video, data):
 
         if key == ord('r'):
             print("Randomizing colors...")
-            colors = np.random.randint(100, 255, (2*max_index, 3)) # Allows for splitting and creating new sperm
+            colors = utils.generateRandomColors(2*max_index)
             video = visualizer.createVisualization(video_original,data,visualization="flow", colors=colors)
             frame = video[frame_num]
             cv.imshow('Labeler', frame)

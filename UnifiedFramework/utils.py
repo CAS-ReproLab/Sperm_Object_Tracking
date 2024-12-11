@@ -37,3 +37,15 @@ def loadDataFrame(filename, convert_segmentation=False):
 def saveDataFrame(df, filename):
     df.to_csv(filename, index=False)
 
+def generateRandomColors(n):
+
+    H = np.random.randint(0, 255, (n, 1)).astype(np.uint8)
+    S = np.random.randint(50, 255, (n, 1)).astype(np.uint8)
+    V = np.random.randint(150, 255, (n, 1)).astype(np.uint8)
+
+    hsv = np.concatenate([H, S, V], axis=1)
+    hsv = np.expand_dims(hsv, axis=0)
+    colors = cv.cvtColor(hsv, cv.COLOR_HSV2BGR)
+    colors = colors[0]
+
+    return colors

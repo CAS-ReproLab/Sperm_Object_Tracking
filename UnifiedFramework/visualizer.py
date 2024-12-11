@@ -86,7 +86,8 @@ def createVisualization(video, data, visualization="flow", colors=None):
     # Create some random colors
     if colors is None:
         max_index = data['sperm'].max()
-        colors = np.random.randint(100, 255, (max_index+1, 3))
+        colors = utils.generateRandomColors(max_index+1)
+        #colors = np.random.randint(100, 255, (max_index+1, 3))
 
     num_frames, rows, cols, ch = video.shape
     video_out = np.zeros((num_frames,rows,cols,3),dtype=np.uint8)
