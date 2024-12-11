@@ -6,6 +6,8 @@ import numpy as np
 import cv2 as cv
 
 import utils
+import tkinter as tk
+from tkinter import filedialog
 
 def opticalFlow(frame,data,frame_num,mask,colors):
 
@@ -188,17 +190,34 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Show the tracked cells in a video')
     parser.add_argument('visualization', type=str, help='Type of visualization to create')
-    parser.add_argument('videofile', type=str, help='Path to the video file')
+    parser.add_argument('--videofile', type=str, default = None, help='Path to the video file')
     parser.add_argument('--csv', type=str, default = None, help='Path to the csvfile')
     parser.add_argument('--output', type=str, default = None, help='Path to the output file')
+
 
     visualization = parser.parse_args().visualization
     videofile = parser.parse_args().videofile
     csvfile = parser.parse_args().csv
     savefile = parser.parse_args().output
 
+    if videofile is None:
+        root = tk.Tk()
+        root.withdraw()  # Hide the main window
+        videofile = filedialog.askopenfilename()
+
+        if videofile:
+            print("Selected file:", videofile)
+
     if csvfile is None:
-        csvfile = ".".join(videofile.split('.')[:-1]) + '.csv'
+        root = tk.Tk()
+        root.withdraw()  # Hide the main window
+        csvfile = filedialog.askopenfilename()
+
+        if csvfile:
+            print("Selected file:", csvfile)
+
+    #if csvfile is None:
+    #    csvfile = ".".join(videofile.split('.')[:-1]) + '.csv'
 
     if visualization == "segments" or visualization == "coloring":
         convert_segs = True
