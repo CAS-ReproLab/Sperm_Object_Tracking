@@ -189,10 +189,12 @@ def runLabeler(video, data):
                 print("Done!")
 
         if key == ord('m'):
-            sperm1 = int(input("Enter the first sperm to merge: "))
-            sperm2 = int(input("Enter the second sperm to merge: "))
+            sperm1 = input("Enter the first sperm to merge: ")
+            sperm2 = input("Enter the second sperm to merge: ")
             test = input(f"Merge {sperm1} and {sperm2}? (y/n): ")
             if test == 'y':
+                sperm1 = int(sperm1)
+                sperm2 = int(sperm2)
                 print("Processing...")
                 data = mergeSperm(data,sperm1,sperm2)
                 utils.saveDataFrame(data,savefile)
