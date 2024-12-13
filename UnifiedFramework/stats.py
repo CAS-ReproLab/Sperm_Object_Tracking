@@ -254,6 +254,9 @@ def curvilinearVelocity(data, fps=9, pixel_size = 0.26):
     Returns the pd.DataFrame: DataFrame with an additional column 'VAP' containing the average speed of each sperm cell.
     '''
 
+    if "VSL" in data.columns:
+        print("Warning: The VSL column already exists in the dataframe. Overwriting it.")
+
     # Get unique sperm IDs
     sperm_ids = data['sperm'].unique()
 
