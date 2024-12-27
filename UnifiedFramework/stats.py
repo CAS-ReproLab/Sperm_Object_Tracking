@@ -98,56 +98,6 @@ def calcAverageSpeed(data, fps=9):
 
     return data
 
-'''
-def averagePathVelocity(data, fps=9, pixel_size=0.26, win_size=5):
-    ''Calculate the average path velocity (VAP) over all frames
-
-    Parameters:
-    data (pd.DataFrame): DataFrame containing sperm tracking data with columns 'sperm', 'frame', 'x', and 'y'.
-    fps (int): Frames per second, default is 30.
-    pixel_size (float): Size of one pixel in micrometers (or any other unit), default is 0.26.
-    win_size (int): Size of the window in micrometers (or any other unit), default is 1 aka calculates
-    curvilinear velocity (VCL). Adjust window_size accordingly for VAP.
-    Returns the pd.DataFrame: DataFrame with an additional column 'VAP' containing the average speed of each sperm cell.
-    ''
-
-    # Get unique sperm IDs
-    sperm_ids = data['sperm'].unique()
-
-    # Iterate over each sperm ID
-    for sperm_id in sperm_ids:
-        # Filter the dataframe for the current sperm
-        sperm = data[data['sperm'] == sperm_id]
-
-        # Sort the dataframe by frame
-        sperm = sperm.sort_values(by='frame')
-
-        # Set distance iteration based on window size
-        distance_iteration = len(sperm) - win_size
-
-        # Calculate the total distance traveled by the sperm
-        total_distance = 0
-        for j in range(1, distance_iteration):
-            start = (sperm['x'].iloc[j - 1], sperm['y'].iloc[j - 1])
-            end = (sperm['x'].iloc[j], sperm['y'].iloc[j])
-            # Calculate the distance in pixels
-            distance_pixels = sqrt((end[0] - start[0]) ** 2 + (end[1] - start[1]) ** 2)
-
-            # Add total distance
-            total_distance += distance_pixels
-
-        # Calculate the average speed in real-world units per second
-        if distance_iteration > 0:
-            average_speed = total_distance * (fps / distance_iteration) * pixel_size
-        else:
-            average_speed = 0
-
-        # Add the average speed to the dataframe
-        data.loc[data['sperm'] == sperm_id, 'VAP'] = average_speed
-
-    return data
-'''
-
 
 def averagePathVelocity2(data, fps=9, pixel_size=0.26, win_size=5):
     '''Calculate the average path velocity (VAP) over all frames
@@ -160,6 +110,8 @@ def averagePathVelocity2(data, fps=9, pixel_size=0.26, win_size=5):
     curvilinear velocity (VCL). Adjust window_size accordingly for VAP.
     Returns the pd.DataFrame: DataFrame with an additional column 'VAP' containing the average speed of each sperm cell.
     '''
+    if "VAP" in data.columns:
+        print("Warning: The average path velocity column already exists in the dataframe. Overwriting it.")
 
     # Get unique sperm IDs
     sperm_ids = data['sperm'].unique()
@@ -254,8 +206,8 @@ def curvilinearVelocity(data, fps=9, pixel_size = 0.26):
     Returns the pd.DataFrame: DataFrame with an additional column 'VAP' containing the average speed of each sperm cell.
     '''
 
-    if "VSL" in data.columns:
-        print("Warning: The VSL column already exists in the dataframe. Overwriting it.")
+    if "VCL" in data.columns:
+        print("Warning: The curvilinear velocity column already exists in the dataframe. Overwriting it.")
 
     # Get unique sperm IDs
     sperm_ids = data['sperm'].unique()
@@ -294,7 +246,7 @@ def curvilinearVelocity(data, fps=9, pixel_size = 0.26):
 
     return data
 
-def straightLineVelocity2(data, fps=9, pixel_size=0.26):
+def straightLineVelocity(data, fps=9, pixel_size=0.26):
     '''Calculate the straight-line velocity (VSL) over all frames
 
      Parameters:
@@ -305,6 +257,8 @@ def straightLineVelocity2(data, fps=9, pixel_size=0.26):
      Returns:
      pd.DataFrame: DataFrame with an additional column 'VSL' containing the straight-line velocity of each sperm cell.
      '''
+    if "VSL" in data.columns:
+        print("Warning: The stright line velocity column already exists in the dataframe. Overwriting it.")
 
     # Get unique sperm IDs
     sperm_ids = data['sperm'].unique()
@@ -344,56 +298,6 @@ def straightLineVelocity2(data, fps=9, pixel_size=0.26):
     return data
 
 
-
-def straightLineVelocity(data, fps=9, pixel_size=0.26):
-    '''Calculate the straight-line velocity (VSL) over all frames
-
-     Parameters:
-     data (pd.DataFrame): DataFrame containing sperm tracking data with columns 'sperm', 'frame', 'x', and 'y'.
-     fps (int): Frames per second, default is 30.
-     pixel_size (float): Size of one pixel in micrometers (or any other unit), default is 0.26.
-
-     Returns:
-     pd.DataFrame: DataFrame with an additional column 'VSL' containing the straight-line velocity of each sperm cell.
-     '''
-
-    # Get unique sperm IDs
-    sperm_ids = data['sperm'].unique()
-
-    # Iterate over each sperm ID
-    for sperm_id in sperm_ids:
-        # Filter the dataframe for the current sperm
-        sperm = data[data['sperm'] == sperm_id]
-
-        # Sort the dataframe by frame
-        sperm = sperm.sort_values(by='frame')
-
-        # Check if there are at least two points to calculate velocity
-        if len(sperm) > 1:
-            # Get the first and last points
-            start = (sperm['x'].iloc[0], sperm['y'].iloc[0])
-            end = (sperm['x'].iloc[-1], sperm['y'].iloc[-1])
-
-            # Calculate the straight-line distance in pixels
-            distance_pixels = np.sqrt((end[0] - start[0]) ** 2 + (end[1] - start[1]) ** 2)
-
-            # Calculate the time interval in seconds   ( final frame minus 1)
-            time_interval = (sperm['frame'].iloc[-1] - sperm['frame'].iloc[0]) / fps
-
-            # Calculate the straight-line velocity in real-world units per second
-            if time_interval > 0:
-                average_velocity = (distance_pixels * pixel_size) / time_interval
-            else:
-                average_velocity = 0
-
-            # Add the average velocity to the dataframe
-            data.loc[data['sperm'] == sperm_id, 'VSL'] = average_velocity
-        else:
-            # If there's only one point, velocity cannot be calculated
-            data.loc[data['sperm'] == sperm_id, 'VSL'] = np.nan
-
-    return data
-
 def add_motility_column(data, vcl_column='VCL', threshold=25):
 
     """
@@ -410,12 +314,18 @@ def alh_and_vap(data, fps=9, pixel_size=0.26, win_size=5):
      It returns ALH_mean and ALH_max for each sperm cell.
      '''
 
+    if "ALH_mean" in data.columns or "ALH_max" in data.columns:
+        print("Warning: The amplitude lateral head displacment columns already exists in the dataframe. Overwriting it.")
+
+    if "New_VAP" in data.columns:
+        print("Warning: The NEW average path velocity column already exists in the dataframe. Overwriting it.")
+
     # Get unique sperm IDs
     sperm_ids = data['sperm'].unique()
 
     # Create empty numpy array
-    data['ALH_mean'] = np.nan
-    data['ALH_max'] = np.nan
+    #data['ALH_mean'] = np.nan
+    #data['ALH_max'] = np.nan
 
     for sperm_id in sperm_ids:
         # Filter the dataframe for the current sperm and sort by frame
@@ -528,6 +438,7 @@ def intersect_segments(p1, p2, q1, q2):
         ((q1[1] - p1[1]) * (q2[0] - q1[0]) > (q2[1] - q1[1]) * (q1[0] - p1[0])) !=
         ((q1[1] - p2[1]) * (q2[0] - q1[0]) > (q2[1] - q1[1]) * (q1[0] - p2[0]))
              )
+
 def bcf (data, fps=9, pixel_size=0.26, win_size=5):
     '''Calculate the Beat-Cross Frequency (BCF) for each sperm cell.
        Returns the updated dataframe with BCF values for each sperm cell.
@@ -542,23 +453,6 @@ def bcf (data, fps=9, pixel_size=0.26, win_size=5):
         avg_path_coords = []
         cross_count = 0
 
-        '''
-        # Loop through sperm coordinates to calculate average path
-        for i in range(1, len(sperm) - win_size):
-            # Collect window coordinates
-            window_coords = []
-            for j in range(win_size):
-                x, y = sperm['x'].iloc[i + j], sperm['y'].iloc[i + j]
-                window_coords.append([x, y])
-
-            # Convert to NumPy array
-            window_coords = np.array(window_coords)
-
-            # Calculate average path coordinates
-            aver_x = np.mean(window_coords[:, 0])/win_size
-            aver_y = np.mean(window_coords[:, 1])/win_size
-            avg_path_coords.append((aver_x, aver_y))
-        '''
 
         for i in range(len(sperm) - win_size):
             window_coords = sperm[['x', 'y']].iloc[i:i + win_size].to_numpy()
@@ -599,24 +493,6 @@ def bcf (data, fps=9, pixel_size=0.26, win_size=5):
 
 
 
-
-'''Amplitude Lateral Head Displacment Mean  Function Pseudocode
-
-    ALH mean is the average amount that the sperm head strays or moves side to side from its curvilinear path 
-    over its entire journey
-
-    Loop through sperm ID
-        Loop through each point in trajectory
-            Create alh value list
-            if the current distance is greater then the previous and the next distance, append distance to list
-    
-    If the alh list is not empty, get mean and mutiply by 2
-    
-    return data        
-'''
-
-
-
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Compute statistics about sperm cells')
@@ -644,7 +520,7 @@ if __name__ == '__main__':
     # Run calcAverageSpeed
     vap = averagePathVelocity2(data, fps= 9, pixel_size= 1.0476, win_size= 5)
     vcl = curvilinearVelocity(data, fps= 9, pixel_size= 1.0476)
-    vsl = straightLineVelocity2(data, fps=9, pixel_size= 1.0476)
+    vsl = straightLineVelocity(data, fps=9, pixel_size= 1.0476)
     alh = alh_and_vap(data, fps=9, pixel_size= 1.0476,win_size= 5)
     bcf = bcf(data, fps=9, pixel_size=1.0476, win_size=5)
 
@@ -655,7 +531,6 @@ if __name__ == '__main__':
     utils.saveDataFrame(vap, outputfile)
     utils.saveDataFrame(vcl, outputfile)
     utils.saveDataFrame(motility, outputfile)
-    utils.saveDataFrame(vsl, outputfile)
     utils.saveDataFrame(vsl, outputfile)
     utils.saveDataFrame(alh, outputfile)
     utils.saveDataFrame(bcf, outputfile)
