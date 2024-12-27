@@ -12,6 +12,9 @@ import utils
 
 import pandas as pd
 
+import tkinter as tk
+from tkinter import filedialog
+
 #import pims
 #@pims.pipeline
 #def as_grey(frame):
@@ -226,13 +229,21 @@ def labelIm2Array(label_im, num_labels):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Track cells in a video')
-    parser.add_argument('videofile', type=str, help='Path to the video file')
+    parser.add_argument('--videofile', type=str, default=None, help='Path to the video file')
     parser.add_argument('--output', type=str, default=None, help='Path to the output file')
     parser.add_argument('--no_segmentation', action='store_false', help='Do not segment the cells')
 
     videofile = parser.parse_args().videofile
     outputfile = parser.parse_args().output
     compute_segs = parser.parse_args().no_segmentation
+
+    if videofile is None:
+        root = tk.Tk()
+        root.withdraw()  # Hide the main window
+        videofile = filedialog.askopenfilename()
+
+        if videofile:
+            print("Selected file:", videofile)
 
     final = processVideo(videofile,compute_segs)
 
