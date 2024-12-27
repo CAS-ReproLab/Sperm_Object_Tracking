@@ -2,6 +2,7 @@ import argparse
 import os
 import json
 import pickle
+import pandas as pd
 import numpy as np
 import cv2 as cv
 import time
@@ -27,6 +28,19 @@ def splitSperm(data,sperm1,frame_num):
 def deleteSperm(data,sperm1):
     # Delete all rows with sperm1
     data = data[data['sperm'] != sperm1]
+    return data
+
+def addSperm(data,sperm1,frame_num,x,y):
+    # Add a new sperm with a new ID at frame_num with x and y
+    new_row = {
+        'frame': frame_num,
+        'sperm': sperm1,
+        'x': x,
+        'y': y,
+    }
+    df_new_row = pd.DataFrame([new_row])
+
+    data = pd.concat([data,df_new_row],ignore_index=True)
     return data
 
 def onMouse(event, x, y, flags, param):
@@ -57,6 +71,18 @@ def onMouse(event, x, y, flags, param):
                 current_sperm = i
                 break
 
+def onNewSperm(event, x, y, flags, param):
+    global current_sperm
+    global clicked
+    global new_x
+    global new_y
+
+    if event == cv.EVENT_LBUTTONDOWN:
+        new_x = x
+        new_y = y
+        clicked = True
+
+
 def runLabeler(video, data):
     print(
     '''
@@ -64,11 +90,12 @@ def runLabeler(video, data):
     k: Play/Pause
     l: Next frame
     j: Previous frame
-    t: Mark track as "Keep" for current sperm
-    u: Mark track as "Unusable" for current sperm
     s: Split the current sperm
     d: Delete the current sperm
     m: Merge two sperm
+    n: Create track for new sperm
+    t: Mark track as "Keep" for current sperm
+    u: Mark track as "Unusable" for current sperm
     r: Randomize colors
     o: Toggle original video
     q: Quit
@@ -77,6 +104,9 @@ def runLabeler(video, data):
     )
 
     global current_sperm
+    global clicked
+    global new_x
+    global new_y
 
     # Add "keep" column to dataframe, assume all unusable
     data['keep'] = 0
@@ -203,6 +233,58 @@ def runLabeler(video, data):
                 frame = video[frame_num]
                 cv.imshow('Labeler', frame)
                 print("Done!")
+
+        if key == ord('n'):
+            print("Creating new sperm...")
+
+            new_sperm = data['sperm'].max() + 1
+            current_sperm = new_sperm
+
+            clicked = False
+            new_x = 0
+            new_y = 0
+
+            mask = np.zeros((int(height),int(width),int(3)),dtype=np.uint8)
+
+            print("Click on the location of the sperm in this frame. Press 'x' to finish and save track.")
+            print("Frame number: " + str(frame_num))
+            flag = True
+            while flag:
+                cv.setMouseCallback('Labeler', onNewSperm, [data,frame_num])
+
+                key = cv.waitKey(1) & 0xFF
+                if key == ord('x'):
+                    flag = False
+
+                if clicked:
+                    data = addSperm(data,new_sperm,frame_num,new_x,new_y)
+
+                    # Draw light circle to show path 
+                    mask += cv.circle(mask, (new_x,new_y), 3, (255,0,0), -1)
+
+                    frame_num += 1
+                    if show_original:
+                        frame = video_original[frame_num]
+                        #frame = cv.add(frame, mask)
+                        frame = cv.addWeighted(frame, 1.00, mask, 0.25, 0)
+                        cv.imshow('Labeler', frame)
+                    else:
+                        frame = video[frame_num]
+                        frame = cv.add(frame, mask)
+                        frame = cv.addWeighted(frame, 1.00, mask, 0.25, 0)
+                        cv.imshow('Labeler', frame)
+                    
+                    time.sleep(0.1) #Help prevent double clicking
+                    clicked = False
+                    print("Frame number: " + str(frame_num))
+
+            data.fillna(0, inplace=True)
+            utils.saveDataFrame(data,savefile)
+            video = visualizer.createVisualization(video_original,data,visualization="flow", colors=colors)
+            show_original = False
+            frame = video[frame_num]
+            cv.imshow('Labeler', frame)
+            print("Done!")
 
         if key == ord('t'):
             test = input("Keep track for sperm " + str(current_sperm) + "? (y/n): ")
