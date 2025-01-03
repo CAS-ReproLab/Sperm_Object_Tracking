@@ -35,6 +35,10 @@ def threshold(frame, method='otsu',global_thresh=50):
 
     if method == 'global':
         _, bw = cv.threshold(frame,global_thresh,255,cv.THRESH_BINARY)
+    elif method == 'median':
+        thresh_val = np.median(frame) + 20
+        #print(thresh_val)
+        _, bw = cv.threshold(frame,thresh_val,255,cv.THRESH_BINARY)
     elif method == 'otsu':
         _, bw = cv.threshold(frame,0,255,cv.THRESH_BINARY+cv.THRESH_OTSU)
     elif method == 'adaptive':
@@ -49,6 +53,27 @@ def threshold(frame, method='otsu',global_thresh=50):
     
     return bw
 
+def determineCentroids_simple(frames,method="hybrid",global_thresh=50):
+
+    # Make dataframe to store centroids
+    f = pd.DataFrame(columns=['y', 'x', 'frame'])
+
+    # Find centroids by focusing on heads
+    for i in trange(len(frames)):
+        frame = frames[i]
+
+        # Find centroids by focusing by taking every blob
+        bw = threshold(frame, method=method, global_thresh=global_thresh)
+        _, _, _, centroids = cv.connectedComponentsWithStats(bw, 4, cv.CV_32S) 
+
+        # Filter out the background (always index 0)
+        centroids = centroids[1:]
+
+        # Add centroids to dataframe
+        for centroid in centroids:
+            f.loc[len(f.index)] = [centroid[1], centroid[0], i]
+
+    return f
 
 def determineCentroids_morphology(frames, kernel_size=(3,3)):
 
