@@ -149,3 +149,4 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
+UnifiedFramework/Comparisons/comparisons_data.zip
