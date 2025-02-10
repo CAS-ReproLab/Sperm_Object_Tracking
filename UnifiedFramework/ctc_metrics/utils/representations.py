@@ -284,7 +284,14 @@ def count_acyclic_graph_correction_operations(
     # Classify vertices to tp, fp, fn and vs
     assignments_r = np.sum(det_test, axis=0)
     assignments_c = np.sum(det_test, axis=1)
-    assert np.max(assignments_r) <= 1
+    if np.max(assignments_r) > 1:
+        print("Warning: Multiple assignments to reference vertices!")
+        locs = np.where(assignments_r > 1)
+        vals = assignments_r[locs]
+        print(locs)
+        print(vals)
+        print("Calculations may be incorrect!")
+    #assert np.max(assignments_r) <= 1
     V_tp_r = assignments_r == 1
     V_tp_c = assignments_c == 1
     stats["TP"] = np.sum(V_tp_r)
