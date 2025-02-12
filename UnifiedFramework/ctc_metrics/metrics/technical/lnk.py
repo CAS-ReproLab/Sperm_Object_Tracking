@@ -31,7 +31,8 @@ def lnk(
     # Calculate AOGM_0 (create graph from scratch)
     #   i.e, all vertices and edges are false negatives
     AOGM_0 = w_ea * num_edges
-    # Calculate DET
+    #print(AOGM_A, AOGM_0)
+    # Calculate LNK
     LNK = 1 - min(AOGM_A, AOGM_0) / AOGM_0
     return float(LNK)
 
