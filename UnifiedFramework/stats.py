@@ -17,6 +17,11 @@ def interpolate_missing_frames(data, fps=9, pixel_size=0.26):
        """
     # Ensure all sperm IDs are integers
     data['sperm'] = data['sperm'].astype(int)
+    
+    # Make sure x and y coordinates can accep float to preven pandas warning. 
+    data['x'] = data['x'].astype(float)
+    data['y'] = data['y'].astype(float)
+
 
     sperm_ids = data['sperm'].unique()
     interpolated_data = []
@@ -37,6 +42,7 @@ def interpolate_missing_frames(data, fps=9, pixel_size=0.26):
                     continue
                 for f in range(1, frame_diff):
                     new_frame = frames[i - 1] + f
+                    
                     new_x = x_start + f * (x_end - x_start) / frame_diff
                     new_y = y_start + f * (y_end - y_start) / frame_diff
 
@@ -410,6 +416,10 @@ def bcf (data, fps=9, pixel_size=0.26, win_size=5):
        Returns the updated dataframe with BCF values for each sperm cell.
     '''
 
+    if "BCF" in data.columns:
+        print("Warning: The beat cross frequency column already exists in the dataframe. Overwriting it.")
+        
+        
     sperm_ids = data['sperm'].unique()
 
     data['BCF'] = np.nan
