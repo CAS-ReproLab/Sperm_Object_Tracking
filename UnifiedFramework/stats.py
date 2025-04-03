@@ -103,25 +103,14 @@ def calcAverageSpeed(data, fps=9):
 def averagePathVelocity(data, fps=9, pixel_size=0.26, win_size=5):
     """
     Compute the average path velocity (VAP) of each sperm cell.
-
-    Parameters
-    ----------
     data : pd.DataFrame
-        DataFrame with columns ['sperm', 'frame', 'x', 'y'] representing:
-        - sperm: Unique ID for each sperm cell
-        - frame: Frame number or time index
-        - x, y : Coordinates for each sperm at each frame
-    fps : float, optional
-        Frames per second, by default 9.
     pixel_size : float, optional
         Size of one pixel in micrometers, by default 0.26.
     win_size : int, optional
         Window size for computing the average path, by default 5.
 
     Returns
-    -------
-    pd.DataFrame
-        Original DataFrame with a new column 'VAP' for average path velocity.
+    pd.DataFrame.
     """
 
     if "VAP" in data.columns:

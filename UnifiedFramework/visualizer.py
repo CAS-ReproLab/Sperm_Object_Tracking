@@ -104,20 +104,6 @@ def colorSpeed(frame, data, frame_num, static_threshold, lower_threshold, upper_
     # Get only data for the current frame
     current = data[data['frame'] == frame_num]
 
-    '''
-    # Determine the VAP thresholds for coloring
-    if not current.empty:
-        #vap_values = current['VAP']
-        #static_threshold = vap_values.quantile(0.10)
-        #lower_threshold = vap_values.quantile(0.40)
-        #upper_threshold = vap_values.quantile(0.70)
-        with open('example.txt', 'a') as file:
-            file.write('Static_threshold: ' + str(static_threshold) + '\n')
-            file.write('Lower_threshold: ' + str(lower_threshold) + '\n')
-            file.write('Upper_threshold: ' + str(upper_threshold) + '\n')
-    else:
-        lower_threshold = upper_threshold = 0
-    '''
 
     for row_idx, sperm in current.iterrows():
         segm = sperm['segmentation']
@@ -157,15 +143,11 @@ def colorSpeed(frame, data, frame_num, static_threshold, lower_threshold, upper_
 def flowSpeed(frame, data, frame_num, mask, static_threshold, lower_threshold, upper_threshold):
     """
       Draw optical flow lines and circles based on the speed (VAP) of sperm cells, using different colors for different speed categories.
-
-      Parameters:
       frame (np.array): The image frame to draw on.
       data (pd.DataFrame): DataFrame containing sperm tracking data with columns 'sperm', 'frame', 'x', 'y', and 'VAP'.
       frame_num (int): The current frame number.
       mask (np.array): The mask image to draw on.
-      static_threshold (float): The threshold for static sperm cells.
-      lower_threshold (float): The lower threshold for slow sperm cells.
-      upper_threshold (float): The upper threshold for medium speed sperm cells.
+     
     """
 
     # Define specific colors for each speed category
@@ -183,7 +165,7 @@ def flowSpeed(frame, data, frame_num, mask, static_threshold, lower_threshold, u
         i = sperm['sperm']
         x = int(sperm['x'])
         y = int(sperm['y'])
-        vap = sperm['New_VAP']  # Speed based on VAP
+        vap = sperm['VAP']  # Speed based on VAP
         prev_sperm = prev[prev['sperm'] == i]
         if len(prev_sperm) > 0:
             prev_sperm = prev_sperm.iloc[0]  # Fail safe for duplicate sperm ids
@@ -228,7 +210,7 @@ def runVisualization(videofile, data, visualization="flow",savefile=None):
     colors = np.random.randint(0, 255, (max_index+1, 3))
 
     # Calculate global VAP thresholds
-    vap_values = data['New_VAP']
+    vap_values = data['VAP']
     static_threshold = vap_values.quantile(0.25)
     lower_threshold = vap_values.quantile(0.50)
     upper_threshold = vap_values.quantile(0.75)
