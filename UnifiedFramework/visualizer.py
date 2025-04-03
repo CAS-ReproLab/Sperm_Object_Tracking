@@ -85,7 +85,6 @@ def colorSpeed(frame, data, frame_num, static_threshold, lower_threshold, upper_
     """
     Color the frame based on the average path velocity (VAP) of sperm cells.
 
-    Parameters:
     frame (np.array): The image frame to be colored.
     data (pd.DataFrame): DataFrame containing sperm tracking data with columns 'sperm', 'frame', 'segmentation', and 'VAP'.
     frame_num (int): The frame number to process.
@@ -105,40 +104,49 @@ def colorSpeed(frame, data, frame_num, static_threshold, lower_threshold, upper_
     current = data[data['frame'] == frame_num]
 
 
-    for row_idx, sperm in current.iterrows():
+    for _, sperm in current.iterrows():
         segm = sperm['segmentation']
 
-        if segm is not None:
-            # Convert the segmentation string to a list of lists
+
+        # Skip if segmentation is None
+        if segm is None:
+            continue
+
+        # If the segmentation is a string, parse it into  list
+        if isinstance(segm, str):
             segm = ast.literal_eval(segm)
-            # Convert the list to a numpy array
-            segm = np.array(segm, dtype=int)
 
-            if segm.ndim != 2 or segm.shape[1] != 2:
-                continue
+        # Convert the segmentation list to a NumPy array of shape (N, 2)
+        segm = np.array(segm, dtype=int)
 
-            vap = sperm['VAP']
+        # Sanity check: must be 2D with 2 columns for x,y or row,col
+        if segm.ndim != 2 or segm.shape[1] != 2:
+            # Skip if segmentation isn't the right shape
+            continue
+
+        vap = sperm['VAP']
 
 
-            # Determine the color based on the VAP value
-            if vap <= static_threshold:
-                color = color_static  # Red for static sperm
-            elif vap <= lower_threshold:
-                color = color_slow  # Purple for lower 33%
-            elif vap <= upper_threshold:
-                color = color_medium  # Green for middle 33%
-            else:
-                color = color_fast  # Blue for upper 33%
+        # Determine the color based on the VAP value
+        if vap <= static_threshold:
+            color = color_static  # Red for static sperm
+        elif vap <= lower_threshold:
+            color = color_slow  # Purple for lower 33%
+        elif vap <= upper_threshold:
+            color = color_medium  # Green for middle 33%
+        else:
+            color = color_fast  # Blue for upper 33%
 
-            if len(segm) > 0:
-                try:
-                    mask[segm[:, 0], segm[:, 1]] = color
-                except IndexError as e:
-                    print(f"IndexError: {e} for segmentation: {segm} and color: {color}")
+        if len(segm) > 0:
+            try:
+                mask[segm[:, 0], segm[:, 1]] = color
+            except IndexError as e:
+                print(f"IndexError: {e} for segmentation: {segm} and color: {color}")
 
     img = cv.add(frame, mask)
 
     return img
+
 
 def flowSpeed(frame, data, frame_num, mask, static_threshold, lower_threshold, upper_threshold):
     """
