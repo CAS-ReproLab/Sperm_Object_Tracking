@@ -99,98 +99,87 @@ def calcAverageSpeed(data, fps=9):
     return data
 
 
-def averagePathVelocity2(data, fps=9, pixel_size=0.26, win_size=5):
-    '''Calculate the average path velocity (VAP) over all frames
 
-    Parameters:
-    data (pd.DataFrame): DataFrame containing sperm tracking data with columns 'sperm', 'frame', 'x', and 'y'.
-    fps (int): Frames per second, default is 30.
-    pixel_size (float): Size of one pixel in micrometers (or any other unit), default is 0.26.
-    win_size (int): Size of the window in micrometers (or any other unit), default is 1 aka calculates
-    curvilinear velocity (VCL). Adjust window_size accordingly for VAP.
-    Returns the pd.DataFrame: DataFrame with an additional column 'VAP' containing the average speed of each sperm cell.
-    '''
+def averagePathVelocity(data, fps=9, pixel_size=0.26, win_size=5):
+    """
+    Compute the average path velocity (VAP) of each sperm cell.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        DataFrame with columns ['sperm', 'frame', 'x', 'y'] representing:
+        - sperm: Unique ID for each sperm cell
+        - frame: Frame number or time index
+        - x, y : Coordinates for each sperm at each frame
+    fps : float, optional
+        Frames per second, by default 9.
+    pixel_size : float, optional
+        Size of one pixel in micrometers, by default 0.26.
+    win_size : int, optional
+        Window size for computing the average path, by default 5.
+
+    Returns
+    -------
+    pd.DataFrame
+        Original DataFrame with a new column 'VAP' for average path velocity.
+    """
+
     if "VAP" in data.columns:
-        print("Warning: The average path velocity column already exists in the dataframe. Overwriting it.")
+        print("Warning: The VAP column already exists. Overwriting it.")
 
-    # Get unique sperm IDs
+    # Process each sperm track separately
     sperm_ids = data['sperm'].unique()
-
-    # Iterate over each sperm ID
+    
     for sperm_id in sperm_ids:
-        # Filter the dataframe for the current sperm
-        sperm = data[data['sperm'] == sperm_id]
+        # Extract rows for just this sperm, sorted by frame
+        sperm_df = data[data['sperm'] == sperm_id].sort_values(by='frame')
+        x_vals = sperm_df['x'].to_numpy()
+        y_vals = sperm_df['y'].to_numpy()
+        n_points = len(sperm_df)
+        
+        # If there aren't enough points to form a single complete window, VAP = 0
+        if n_points < win_size:
+            data.loc[data['sperm'] == sperm_id, 'VAP'] = 0
+            continue
 
-        # Sort the dataframe by frame
-        sperm = sperm.sort_values(by='frame')
+        # Collect the average coordinates for each valid window
+        avg_coords = []
+        for i in range(n_points - win_size + 1):
+            window_x = x_vals[i : i + win_size]
+            window_y = y_vals[i : i + win_size]
+            mean_x = window_x.mean()
+            mean_y = window_y.mean()
+            avg_coords.append((mean_x, mean_y))
+        
+        # Convert to NumPy array for vectorized distance calculation
+        avg_coords = np.array(avg_coords)
 
-        # Set distance iteration based on window size
-        distance_iteration = len(sperm) - win_size
-
-        # Calculate the total distance traveled by the sperm
-        total_distance = 0
-        win_dis_sperm = 0
-
-        # Array for all averages coordinates
-        arr1 = np.array([])
-        first_point = (sperm['x'].iloc[0], sperm['y'].iloc[0])
-        arr1 = np.append(arr1, [first_point[0], first_point[1]])
-
-        # Loop through sperm coordinates
-        for i in range(1, len(sperm) - win_size):
-
-            #Arry for coordinate within window
-            arr2  = np.array([])
-            # Loop within sliding window
-            for j in range(win_size):
-
-                # Start with location i + j since we are looping throught j  from 0 to win size
-                start = (sperm['x'].iloc[i + j], sperm['y'].iloc[i + j])
-
-                end = (sperm['x'].iloc[i + j + 1], sperm['y'].iloc[i + j + 1])
-
-                # Summing them twice (need to fix)
-                #total_x = start[0] + end[0]
-                #total_y = start[1] + end[1]
-
-                # Add each total within window size to array
-                arr2 = np.append(arr2, [start[0], start[1]])
-            # Change to 2D array
-            arr2 = arr2.reshape(-1,2)
-            # Add all of x and y in window and divide by window size to create average path coordinates
-            aver_x = np.sum(arr2[:,0]) / win_size
-            aver_y = np.sum(arr2[:,1]) / win_size
-
-            arr1 = np.append(arr1, [aver_x, aver_y])
-
-        last_point = (sperm['x'].iloc[-1], sperm['y'].iloc[-1])
-        arr1 = np.append(arr1, [last_point[0], last_point[1]])
-        num_points = arr1.shape[0]
-
-        # Change it to 2d array
-        arr1 = arr1.reshape(-1, 2)
-
-        # Get number of coordinates
-        num_points = arr1.shape[0]
-
-        # Loop through array 1 to get total distanc of avergae path
-        for i in range(num_points):
-            # Calculate the Euclidean distance between previous point to current point
-            distance = np.sqrt((arr1[i, 0] - arr1[i - 1, 0]) ** 2 + (arr1[i, 1] - arr1[i - 1, 1]) ** 2)
-            total_distance += distance
-
-        # Calculate the VAP
-        if distance_iteration > 0:
-            # Get velocity
-            total_distance = total_distance * (1 / (len(sperm) - win_size))
-            average_speed = total_distance * (fps / distance_iteration) * pixel_size
+        # Calculate the total distance along the "average path"
+        if len(avg_coords) > 1:
+            # Distance between consecutive points in avg_coords
+            dist = np.sqrt(
+                np.diff(avg_coords[:, 0])**2 + 
+                np.diff(avg_coords[:, 1])**2
+            )
+            total_avg_path = dist.sum()
         else:
-            average_speed = 0
+            total_avg_path = 0
 
-        # Add the average speed to the dataframe
-        data.loc[data['sperm'] == sperm_id, 'VAP'] = average_speed
+        # Frames used is #windows (len(avg_coords)). 
+        # Another approach is to consider total frames as well, 
+        # but typically we scale by how many average coords we used:
+        frames_used = len(avg_coords)
+        
+        # Convert distance to velocity
+        # total_avg_path is in "pixels" → multiply by pixel_size to get micrometers (μm)
+        # (fps / frames_used) scales distance to velocity
+        vap = total_avg_path * (fps / frames_used) * pixel_size
+
+        # Update DataFrame
+        data.loc[data['sperm'] == sperm_id, 'VAP'] = vap
 
     return data
+
 
 
 
@@ -309,7 +298,7 @@ def add_motility_column(data, vcl_column='VCL', threshold=25):
 
 
 
-def alh_and_vap(data, fps=9, pixel_size=0.26, win_size=5):
+def alh(data, fps=9, pixel_size=0.26, win_size=5):
     '''Calculate the amplitude of lateral head displacement (ALH) for each sperm cell
      It returns ALH_mean and ALH_max for each sperm cell.
      '''
@@ -398,17 +387,6 @@ def alh_and_vap(data, fps=9, pixel_size=0.26, win_size=5):
                 count += 1
                 displacements.append(distance[l])
 
-        # Calculate VAP
-        total_vap_distance = 0
-        avg_path_coords = np.array(avg_path_coords)
-        if len(avg_path_coords) > 1:
-            total_vap_distance = np.sum(
-                np.sqrt(
-                    np.diff(avg_path_coords[:, 0]) ** 2 + np.diff(avg_path_coords[:, 1]) ** 2
-                ))
-            vap = total_vap_distance * (fps / (len(sperm) - win_size)) * pixel_size
-        else:
-            vap = np.nan
 
 
         # Calculate mean and max ALH, converting to micrometers
@@ -420,7 +398,6 @@ def alh_and_vap(data, fps=9, pixel_size=0.26, win_size=5):
             alh_mean = np.nan
             alh_max = np.nan
         # Assign ALH values back to the dataframe
-        data.loc[data['sperm'] == sperm_id, 'New_VAP'] = vap
         data.loc[data['sperm'] == sperm_id, 'ALH_mean'] = alh_mean
         data.loc[data['sperm'] == sperm_id, 'ALH_max'] = alh_max
 
@@ -518,10 +495,10 @@ if __name__ == '__main__':
     '''
 
     # Run calcAverageSpeed
-    vap = averagePathVelocity2(data, fps= 9, pixel_size= 1.0476, win_size= 5)
+    vap = averagePathVelocity(data, fps= 9, pixel_size= 1.0476, win_size= 5)
     vcl = curvilinearVelocity(data, fps= 9, pixel_size= 1.0476)
     vsl = straightLineVelocity(data, fps=9, pixel_size= 1.0476)
-    alh = alh_and_vap(data, fps=9, pixel_size= 1.0476,win_size= 5)
+    alh = alh(data, fps=9, pixel_size= 1.0476,win_size= 5)
     bcf = bcf(data, fps=9, pixel_size=1.0476, win_size=5)
 
     # Add motility status column based on VCL values
