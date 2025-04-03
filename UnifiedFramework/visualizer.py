@@ -59,6 +59,7 @@ def boundingBoxes(frame,data,frame_num):
 
 def coloring(frame,data,frame_num,colors):
 
+    locs = np.zeros((frame.shape[0],frame.shape[1]))
     mask = np.zeros_like(frame)
 
     # Get only data for the current frame
@@ -75,9 +76,12 @@ def coloring(frame,data,frame_num,colors):
             segm = np.array(segm)
             color = colors[i]
             if len(segm) > 0:
+                locs[segm[:,0],segm[:,1]] = 1
                 mask[segm[:,0],segm[:,1]] = color
 
-    img = cv.add(frame, mask)
+    #img = cv.add(frame, mask)
+    img = np.copy(frame)
+    img[np.where(locs == 1)] = mask[np.where(locs == 1)]
 
     return img
 
