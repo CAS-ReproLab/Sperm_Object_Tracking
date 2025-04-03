@@ -169,10 +169,10 @@ def flowSpeed(frame, data, frame_num, mask, static_threshold, lower_threshold, u
     """
 
     # Define specific colors for each speed category
-    color_static = np.array([255, 0, 0], dtype=np.uint8)  # Red for static
-    color_slow = np.array([128, 0, 128], dtype=np.uint8)  # Purple for slow
-    color_medium = np.array([0, 255, 0], dtype=np.uint8)  # Green for medium
-    color_fast = np.array([0, 0, 255], dtype=np.uint8)  # Blue for fast
+    color_static = np.array([255, 95, 31], dtype=np.uint8)  # Orange for static
+    color_slow = np.array([57, 255, 20], dtype=np.uint8)  # Green for slow
+    color_medium = np.array([224, 33, 138], dtype=np.uint8)  # Pink for medium
+    color_fast = np.array([0, 191, 255], dtype=np.uint8)  # Blue for fast
 
     # Get data for the current frame and previous frame
     current = data[data['frame'] == frame_num]
@@ -183,7 +183,7 @@ def flowSpeed(frame, data, frame_num, mask, static_threshold, lower_threshold, u
         i = sperm['sperm']
         x = int(sperm['x'])
         y = int(sperm['y'])
-        vap = sperm['VAP']  # Speed based on VAP
+        vap = sperm['New_VAP']  # Speed based on VAP
         prev_sperm = prev[prev['sperm'] == i]
         if len(prev_sperm) > 0:
             prev_sperm = prev_sperm.iloc[0]  # Fail safe for duplicate sperm ids
@@ -228,10 +228,10 @@ def runVisualization(videofile, data, visualization="flow",savefile=None):
     colors = np.random.randint(0, 255, (max_index+1, 3))
 
     # Calculate global VAP thresholds
-    vap_values = data['VAP']
-    static_threshold = vap_values.quantile(0.10)
-    lower_threshold = vap_values.quantile(0.40)
-    upper_threshold = vap_values.quantile(0.70)
+    vap_values = data['New_VAP']
+    static_threshold = vap_values.quantile(0.25)
+    lower_threshold = vap_values.quantile(0.50)
+    upper_threshold = vap_values.quantile(0.75)
 
 
     if visualization == "flow" or visualization == "sflow":

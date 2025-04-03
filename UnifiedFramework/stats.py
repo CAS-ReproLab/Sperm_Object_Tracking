@@ -482,7 +482,7 @@ def bcf (data, fps=9, pixel_size=0.26, win_size=5):
         # Calculate BCF
         total_time = (len(sperm) - win_size)
         if total_time > 0:
-            bcf = cross_count / (fps /total_time)
+            bcf = cross_count * (fps /total_time)
         else:
             bcf = np.nan
 
