@@ -97,7 +97,7 @@ def runVisualization(videofile, data, visualization="flow",savefile=None):
 
     # Create a video writer
     if savefile is not None:
-        result_vid = cv.VideoWriter(savefile,cv.VideoWriter_fourcc(*'mp4v'),10,(int(width),int(height)))
+        result_vid = cv.VideoWriter(savefile,cv.VideoWriter_fourcc(*'mp4v'),fps,(int(width),int(height)))
 
     # Create some random colors
     num_sperm = data['sperm'].nunique()
