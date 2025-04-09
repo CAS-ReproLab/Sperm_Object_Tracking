@@ -525,7 +525,7 @@ if __name__ == '__main__':
     20X 2.0619 pixels per micron
     '''
 
-    computeAllStats(data,fps=9,pixel_size=1.0476,win_size=5)
+    data = computeAllStats(data,fps=9,pixel_size=1.0476,win_size=5)
 
     utils.saveDataFrame(data, outputfile)
     print("Statistics computed and saved to", outputfile)

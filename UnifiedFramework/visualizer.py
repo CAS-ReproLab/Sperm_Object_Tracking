@@ -87,45 +87,6 @@ def coloring(frame,data,frame_num,colors):
 
     return img
 
-def createVisualization(video, data, visualization="flow", colors=None):
-    
-    # Create some random colors
-    if colors is None:
-        max_index = data['sperm'].max()
-        colors = utils.generateRandomColors(max_index+1)
-        #colors = np.random.randint(100, 255, (max_index+1, 3))
-
-    num_frames, rows, cols, ch = video.shape
-    video_out = np.zeros((num_frames,rows,cols,3),dtype=np.uint8)
-
-    if visualization == "flow":
-        # Create a mask image for drawing purposes
-        mask = np.zeros((rows,cols,3),dtype=np.uint8)
-        video_out[0] = video[0]
-        start_frame = 1
-    else:
-        start_frame = 0
-
-    for frame_num in range(start_frame,num_frames):
-        frame = video[frame_num]
-
-        if visualization == "flow":
-            img = opticalFlow(frame,data,frame_num,mask,colors)
-
-        elif visualization == "bbox":
-            img = boundingBoxes(frame,data,frame_num)
-
-        elif visualization == "segments" or visualization == "coloring":
-            img = coloring(frame,data,frame_num,colors)
-
-        elif visualization == "original":
-            img = frame
-        else:
-            raise ValueError("Unknown visualization type")
-        
-        video_out[frame_num] = img
-
-    return video_out
 
 def colorSpeed(frame, data, frame_num, static_threshold, lower_threshold, upper_threshold):
     """
@@ -244,6 +205,47 @@ def flowSpeed(frame, data, frame_num, mask, static_threshold, lower_threshold, u
 
     return img
 
+def createVisualization(video, data, visualization="flow", colors=None):
+    
+    # Create some random colors
+    if colors is None:
+        max_index = data['sperm'].max()
+        colors = utils.generateRandomColors(max_index+1)
+        #colors = np.random.randint(100, 255, (max_index+1, 3))
+
+    num_frames, rows, cols, ch = video.shape
+    video_out = np.zeros((num_frames,rows,cols,3),dtype=np.uint8)
+
+    if visualization == "flow":
+        # Create a mask image for drawing purposes
+        mask = np.zeros((rows,cols,3),dtype=np.uint8)
+        video_out[0] = video[0]
+        start_frame = 1
+    else:
+        start_frame = 0
+
+    for frame_num in range(start_frame,num_frames):
+        frame = video[frame_num]
+
+        if visualization == "flow":
+            img = opticalFlow(frame,data,frame_num,mask,colors)
+
+        elif visualization == "bbox":
+            img = boundingBoxes(frame,data,frame_num)
+
+        elif visualization == "segments" or visualization == "coloring":
+            img = coloring(frame,data,frame_num,colors)
+
+        elif visualization == "original":
+            img = frame
+        else:
+            raise ValueError("Unknown visualization type")
+        
+        video_out[frame_num] = img
+
+    return video_out
+
+
 def runVisualization(videofile, data, visualization="flow",savefile=None):
 
     # Open the video file
@@ -261,7 +263,8 @@ def runVisualization(videofile, data, visualization="flow",savefile=None):
     # Create some random colors
     num_sperm = int(data['sperm'].nunique())
     max_index = int(data['sperm'].max())
-    colors = np.random.randint(0, 255, (max_index+1, 3))
+    colors = utils.generateRandomColors(max_index+1)
+    #colors = np.random.randint(0, 255, (max_index+1, 3))
     print(colors.shape)
 
     # Calculate global VAP thresholds
