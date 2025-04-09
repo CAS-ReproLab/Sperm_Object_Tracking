@@ -259,17 +259,18 @@ def runVisualization(videofile, data, visualization="flow",savefile=None):
         result_vid = cv.VideoWriter(savefile,cv.VideoWriter_fourcc(*'mp4v'),fps,(int(width),int(height)))
 
     # Create some random colors
-    num_sperm = data['sperm'].nunique()
-    max_index = data['sperm'].max()
+    num_sperm = int(data['sperm'].nunique())
+    max_index = int(data['sperm'].max())
     colors = np.random.randint(0, 255, (max_index+1, 3))
     print(colors.shape)
 
     # Calculate global VAP thresholds
-    vap_values = data['VAP']
-    static_threshold = vap_values.quantile(0.25)
-    lower_threshold = vap_values.quantile(0.50)
-    upper_threshold = vap_values.quantile(0.75)
-
+    # Check if VAP column exists in the dataframe
+    if 'VAP' in data.columns:
+        vap_values = data['VAP']
+        static_threshold = vap_values.quantile(0.25)
+        lower_threshold = vap_values.quantile(0.50)
+        upper_threshold = vap_values.quantile(0.75)
 
     if visualization == "flow" or visualization == "sflow":
         ret, frame = cap.read()

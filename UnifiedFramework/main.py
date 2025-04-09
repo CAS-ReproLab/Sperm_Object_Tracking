@@ -1,6 +1,7 @@
 
 import json
 import argparse
+import stats
 import utils
 from tracker import determineCentroids, trackCentroids, segmentCells
 from visualizer import runVisualization
@@ -33,6 +34,9 @@ if __name__ == '__main__':
     # Segment the cells
     if config["compute_segs"]=="true":
         t = segmentCells(frames, t)
+
+    # Compute stats
+    t = stats.computeAllStats(t,config["fps"],config["pixel_size"])
 
     # Save the dataframe
     if outputfile is None:

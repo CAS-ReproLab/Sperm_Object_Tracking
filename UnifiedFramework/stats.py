@@ -65,45 +65,44 @@ def interpolate_missing_frames(data, fps=9, pixel_size=0.26):
     return combined_df
 
 
-def calcAverageSpeed(data, fps=9):
-    """
-    Calculate the average speed of a sperm cell
-    """
-    if "average_speed" in data.columns:
-        print("Warning: The average_speed column already exists in the dataframe. Overwriting it.")
+# def calcAverageSpeed(data, fps=9):
+#     """
+#     Calculate the average speed of a sperm cell
+#     """
+#     if "average_speed" in data.columns:
+#         print("Warning: The average_speed column already exists in the dataframe. Overwriting it.")
 
-    # Add a column to the dataframe to store the average speed
-    data['average_speed'] = 0.0
+#     # Add a column to the dataframe to store the average speed
+#     data['average_speed'] = 0.0
 
-    # Determine the number of sperm
-    sperm_count = data['sperm'].nunique()
+#     # Determine the number of sperm
+#     sperm_count = data['sperm'].nunique()
 
-    # Determine the number of frames
-    frames = data['frame'].nunique()
+#     # Determine the number of frames
+#     frames = data['frame'].nunique()
 
-    for i in range(sperm_count):
-        # Filter the dataframe
-        sperm = data[data['sperm'] == i]
+#     for i in range(sperm_count):
+#         # Filter the dataframe
+#         sperm = data[data['sperm'] == i]
 
-        # Sort the dataframe by frame
-        sperm = sperm.sort_values(by='frame')
+#         # Sort the dataframe by frame
+#         sperm = sperm.sort_values(by='frame')
 
-        # Calculate the average speed for each sperm
-        count = len(sperm) - 1
-        total = 0
-        for j in range(1, len(sperm)):
-            start = (sperm['x'].iloc[j-1], sperm['y'].iloc[j-1])
-            end = (sperm['x'].iloc[j], sperm['y'].iloc[j])
-            total += sqrt((end[1]-start[1])**2 + (end[0]-start[0])**2)
+#         # Calculate the average speed for each sperm
+#         count = len(sperm) - 1
+#         total = 0
+#         for j in range(1, len(sperm)):
+#             start = (sperm['x'].iloc[j-1], sperm['y'].iloc[j-1])
+#             end = (sperm['x'].iloc[j], sperm['y'].iloc[j])
+#             total += sqrt((end[1]-start[1])**2 + (end[0]-start[0])**2)
         
-        # Calculate the average speed
-        average_speed = (total/count)/fps
+#         # Calculate the average speed
+#         average_speed = (total/count)/fps
 
-        # Add the average speed to the dataframe
-        data.loc[data['sperm'] == i, 'average_speed'] = average_speed
+#         # Add the average speed to the dataframe
+#         data.loc[data['sperm'] == i, 'average_speed'] = average_speed
 
-    return data
-
+#     return data
 
 
 def averagePathVelocity(data, fps=9, pixel_size=0.26, win_size=5):
@@ -467,6 +466,29 @@ def bcf (data, fps=9, pixel_size=0.26, win_size=5):
 
     return data
 
+def computeAllStats(data,fps=9,pixel_size=1.0476,win_size=5):
+    '''Compute all statistics for each sperm cell and add them to the dataframe.
+    '''
+    # Interpolate missing frames
+    data = interpolate_missing_frames(data)
+
+    # Calculate average path velocity (VAP)
+    data = averagePathVelocity(data, fps=fps, pixel_size=pixel_size, win_size=win_size)
+
+    # Calculate curvilinear velocity (VCL)
+    data = curvilinearVelocity(data, fps=fps, pixel_size=pixel_size)
+
+    # Calculate straight-line velocity (VSL)
+    data = straightLineVelocity(data, fps=fps, pixel_size=pixel_size)
+
+    # Calculate amplitude of lateral head displacement (ALH)
+    data = alh(data, fps=fps, pixel_size=pixel_size, win_size=win_size)
+
+    # Calculate beat-cross frequency (BCF)
+    data = bcf(data, fps=fps, pixel_size=pixel_size, win_size=win_size)
+
+    return data
+
 
 
 if __name__ == '__main__':
@@ -484,32 +506,38 @@ if __name__ == '__main__':
 
     data = pd.read_csv(csvfile)
 
-    # Interpolate missing frames
-    data = interpolate_missing_frames(data)
-
     '''Pixel Sizes
     5X 0.5512 pixels per micron
     10X 1.0476 pixels per micron
     20X 2.0619 pixels per micron
     '''
 
-    # Run calcAverageSpeed
-    vap = averagePathVelocity(data, fps= 9, pixel_size= 1.0476, win_size= 5)
-    vcl = curvilinearVelocity(data, fps= 9, pixel_size= 1.0476)
-    vsl = straightLineVelocity(data, fps=9, pixel_size= 1.0476)
-    alh = alh(data, fps=9, pixel_size= 1.0476,win_size= 5)
-    bcf = bcf(data, fps=9, pixel_size=1.0476, win_size=5)
+    computeAllStats(data,fps=9,pixel_size=1.0476,win_size=5)
 
-    # Add motility status column based on VCL values
-    motility = add_motility_column(data, vcl_column='VCL')
-
-    # Save the new data file with the statistics
-    utils.saveDataFrame(vap, outputfile)
-    utils.saveDataFrame(vcl, outputfile)
-    utils.saveDataFrame(motility, outputfile)
-    utils.saveDataFrame(vsl, outputfile)
-    utils.saveDataFrame(alh, outputfile)
-    utils.saveDataFrame(bcf, outputfile)
-
+    utils.saveDataFrame(data, outputfile)
     print("Statistics computed and saved to", outputfile)
+
+
+    # # Interpolate missing frames
+    # data = interpolate_missing_frames(data)
+
+    # # Run all stats
+    # vap = averagePathVelocity(data, fps= 9, pixel_size= 1.0476, win_size= 5)
+    # vcl = curvilinearVelocity(data, fps= 9, pixel_size= 1.0476)
+    # vsl = straightLineVelocity(data, fps=9, pixel_size= 1.0476)
+    # alh = alh(data, fps=9, pixel_size= 1.0476,win_size= 5)
+    # bcf = bcf(data, fps=9, pixel_size=1.0476, win_size=5)
+
+    # # Add motility status column based on VCL values
+    # motility = add_motility_column(data, vcl_column='VCL')
+
+    # # Save the new data file with the statistics
+    # utils.saveDataFrame(vap, outputfile)
+    # utils.saveDataFrame(vcl, outputfile)
+    # utils.saveDataFrame(motility, outputfile)
+    # utils.saveDataFrame(vsl, outputfile)
+    # utils.saveDataFrame(alh, outputfile)
+    # utils.saveDataFrame(bcf, outputfile)
+
+    # print("Statistics computed and saved to", outputfile)
 
