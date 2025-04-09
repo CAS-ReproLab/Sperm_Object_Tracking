@@ -172,6 +172,7 @@ def runLabeler(video, data):
 
         if key == ord('i'):
             print("Interpolating all tracks...")
+            data = utils.dropDuplicates(data)
             data = utils.interpolateTracks(data)
             print("Done!")
 

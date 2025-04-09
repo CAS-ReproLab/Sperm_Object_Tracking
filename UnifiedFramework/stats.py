@@ -9,6 +9,8 @@ import utils
 import tkinter as tk
 from tkinter import filedialog
 
+import matplotlib.pyplot as plt
+
 def interpolate_missing_frames(data, fps=9, pixel_size=0.26):
     """Interpolate missing frames for each sperm.
 
@@ -492,6 +494,38 @@ def computeAllStats(data,fps=9,pixel_size=1.0476,win_size=5):
 
     return data
 
+def plotAllStats(data,bin_size=1, bin_max=50):
+    # Get unique sperm
+    sperm_ids = data['sperm'].unique()
+
+    # Make subplot of 1x3
+    fig, ax = plt.subplots(1, 3, figsize=(15, 10))
+    fig.subplots_adjust(hspace=0.4, wspace=0.4)
+
+    bins = np.arange(0, bin_max + bin_size, bin_size)
+
+    # Plot histogram of VCL
+    vcl_values = data.groupby('sperm').first()["VCL"]
+    ax[0].hist(vcl_values, bins=bins, alpha=1.0, color='purple')
+    ax[0].set_xlabel("VCL (microns/second)", fontsize=14)
+    ax[0].set_ylabel('Frequency', fontsize=14)
+
+    # Plot histogram of VAP
+    vap_values = data.groupby('sperm').first()["VAP"]
+    ax[1].hist(vap_values, bins=bins, alpha=1.0, color='purple')
+    ax[1].set_xlabel("VAP (microns/second)", fontsize=14)
+    ax[1].set_ylabel('Frequency', fontsize=14)
+
+    # Plot histogram of VSL
+    vsl_values = data.groupby('sperm').first()["VSL"]
+    ax[2].hist(vsl_values, bins=bins, alpha=1.0, color='purple')
+    ax[2].set_xlabel("VSL (microns/second)", fontsize=14)
+    ax[2].set_ylabel('Frequency', fontsize=14)
+
+
+    #Plot figure
+    plt.tight_layout()
+    plt.show()
 
 
 if __name__ == '__main__':
@@ -529,6 +563,8 @@ if __name__ == '__main__':
 
     utils.saveDataFrame(data, outputfile)
     print("Statistics computed and saved to", outputfile)
+
+    plotAllStats(data)
 
 
     # # Interpolate missing frames

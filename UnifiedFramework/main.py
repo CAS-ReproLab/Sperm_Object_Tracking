@@ -85,6 +85,9 @@ if __name__ == '__main__':
 
     utils.saveDataFrame(t, outputfile)
 
+    # Show stats plots
+    stats.plotAllStats(t)
+
     if outputvideofile is None:
         outputvideofile = ".".join(videofile.split('.')[:-1]) + '_output.mp4'
 
