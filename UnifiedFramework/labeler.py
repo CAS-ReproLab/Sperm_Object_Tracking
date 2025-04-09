@@ -98,6 +98,7 @@ def runLabeler(video, data):
     u: Mark track as "Unusable" for current sperm
     r: Randomize colors
     o: Toggle original video
+    i: Interpolate missing frames all tracks
     q: Quit
     Mouse Click: Identify sperm number (make sure to click on the last location of the sperm in the frame)
     '''
@@ -168,6 +169,11 @@ def runLabeler(video, data):
 
         if key == ord('q'):
             break
+
+        if key == ord('i'):
+            print("Interpolating all tracks...")
+            data = utils.interpolateTracks(data)
+            print("Done!")
 
         if key == ord(' ') or key == ord('k'):
             playvid = not playvid

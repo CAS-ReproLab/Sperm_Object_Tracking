@@ -92,3 +92,51 @@ def positivePhaseFilter(frames, cutoff=5):
 
     frames = frames.astype(np.uint8)
     return frames
+
+
+def dropDuplicates(df):
+      
+    # Detect duplicate rows based on 'col1' and 'col2'
+    #duplicate_rows = df[df.duplicated(subset=['frame', 'sperm'], keep='first')]
+    result = df.drop_duplicates(subset=['frame', 'sperm'], keep='first')
+
+    return result
+
+def interpolateTracks(df):
+
+    result = df.copy()
+
+    for sperm in range(0, df['sperm'].max() + 1):
+        sperm_frames = df[df['sperm'] == sperm]['frame'].values
+        if len(sperm_frames) > 1:
+            birth = np.amin(sperm_frames)
+            death = np.amax(sperm_frames)
+
+
+            # Find if the sperm exists for all frames
+            if len(sperm_frames) != death - birth + 1:
+                #print("Missing frames for sperm: ", sperm)
+                #print("Birth: ", birth, ", Death: ", death)
+                #print("Frames: ", sperm_frames)
+
+                for j in range(birth, death + 1):
+                    if j not in sperm_frames:
+                 
+                        # Find closest frame after the missing frame
+                        before = np.amax(sperm_frames[np.where(sperm_frames < j)])
+                        after = np.amin(sperm_frames[np.where(sperm_frames > j)])
+
+                        # interpolate x and y
+                        before_x = df[(df['sperm'] == sperm) & (df['frame'] == before)]['x'].values[0]
+                        before_y = df[(df['sperm'] == sperm) & (df['frame'] == before)]['y'].values[0]
+                        after_x = df[(df['sperm'] == sperm) & (df['frame'] == after)]['x'].values[0]
+                        after_y = df[(df['sperm'] == sperm) & (df['frame'] == after)]['y'].values[0]
+
+                        x = before_x + (after_x - before_x) * (j - before) / (after - before)
+                        y = before_y + (after_y - before_y) * (j - before) / (after - before)
+
+                        #print("Adding frame: ", j)
+                        #gt = gt.append({'frame': j, 'sperm': sperm, 'x': x, 'y': y}, ignore_index=True)
+                        result = pd.concat([result, pd.DataFrame([[j, sperm, x, y]], columns=['frame', 'sperm', 'x', 'y'])], ignore_index=True)
+
+    return result
