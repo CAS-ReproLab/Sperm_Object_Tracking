@@ -104,7 +104,7 @@ def determineCentroids(frames, diameter=7, minmass=100, maxsize=5):
     
     return f
 
-def trackCentroids(f, search_range=7, memory=3, adaptive_stop=0.2, adaptive_step=0.95):
+def trackCentroids(f, search_range=21, memory=3, adaptive_stop=0.2, adaptive_step=0.95):
     t = tp.link(f, search_range=search_range, memory=memory, adaptive_stop=adaptive_stop, adaptive_step=adaptive_step)
     t = tp.filter_stubs(t, 15)
 
@@ -272,10 +272,12 @@ if __name__ == '__main__':
     if videofile is None:
         root = tk.Tk()
         root.withdraw()  # Hide the main window
-        videofile = filedialog.askopenfilename()
+        videofile = filedialog.askopenfilename(title="Select the video file")
 
         if videofile:
             print("Selected file:", videofile)
+        else:
+            raise ValueError("No video file selected.")
 
     final = processVideo(videofile,compute_segs)
 

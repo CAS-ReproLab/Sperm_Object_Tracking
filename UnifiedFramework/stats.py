@@ -6,6 +6,9 @@ from math import sqrt
 import pandas as pd
 import utils
 
+import tkinter as tk
+from tkinter import filedialog
+
 def interpolate_missing_frames(data, fps=9, pixel_size=0.26):
     """Interpolate missing frames for each sperm.
 
@@ -494,12 +497,22 @@ def computeAllStats(data,fps=9,pixel_size=1.0476,win_size=5):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Compute statistics about sperm cells')
-    parser.add_argument('csvfile', type=str, help='Path to the tracker csv file')
+    parser.add_argument('--csvfile', type=str, help='Path to the tracker csv file')
     parser.add_argument('--output', type=str, default=None, help='Path to the output file')
 
 
     csvfile = parser.parse_args().csvfile
     outputfile = parser.parse_args().output
+
+    if csvfile is None:
+        root = tk.Tk()
+        root.withdraw()  # Hide the main window
+        csvfile = filedialog.askopenfilename(title="Select the csv file")
+
+        if csvfile:
+            print("Selected file:", csvfile)
+        else:
+            raise ValueError("No csv file selected.")
 
     if outputfile is None:
         outputfile = csvfile

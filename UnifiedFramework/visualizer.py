@@ -340,7 +340,7 @@ if __name__ == '__main__':
     if videofile is None:
         root = tk.Tk()
         root.withdraw()  # Hide the main window
-        videofile = filedialog.askopenfilename()
+        videofile = filedialog.askopenfilename(title="Select the video file")
 
         if videofile:
             print("Selected file:", videofile)
@@ -348,7 +348,7 @@ if __name__ == '__main__':
     if csvfile is None:
         root = tk.Tk()
         root.withdraw()  # Hide the main window
-        csvfile = filedialog.askopenfilename()
+        csvfile = filedialog.askopenfilename(title="Select the CSV file")
 
         if csvfile:
             print("Selected file:", csvfile)
