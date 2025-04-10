@@ -220,9 +220,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Track cells in a video')
     parser.add_argument('--prediction', type=str, default=None, help='Path to the prediction csv file')
     parser.add_argument('--groundtruth', type=str, default=None, help='Path to the ground truth csv file')
+    parser.add_argument('--all', action='store_true', help='Compute all metrics')
 
     predictionfile = parser.parse_args().prediction
     groundtruthfile = parser.parse_args().groundtruth
+    report_all = parser.parse_args().all
 
     if predictionfile is None:
         root = tk.Tk()
@@ -272,8 +274,20 @@ if __name__ == "__main__":
     results = computeMetrics(gt_tracks, pred_tracks, traj)
     results_filter = computeMetrics(gt_filter_tracks, pred_filter_tracks, traj_filter)
 
-    for key,val in results.items():
-        print(key, val)
+    if not report_all:
+        # Filter the results to only include the metrics we want to report
+        results = {key: results[key] for key in ["DET","TRA", "LNK", "TF", "MOTA", "IDF1", "HOTA"]}
+        results_filter = {key: results_filter[key] for key in ["DET","TRA", "LNK", "TF", "MOTA", "IDF1", "HOTA"]}
 
-    for key,val in results_filter.items():
-        print(key, val)
+    # Concatenate results into dataframe
+    results_df = pd.DataFrame(columns=["Metric", "Unfiltered", "Filtered"])
+
+    for key,val in results.items():        
+        results_df = pd.concat([results_df, pd.DataFrame([[key, val, results_filter[key]]], columns=["Metric", "Unfiltered", "Filtered"])], ignore_index=True)
+
+    #results_df.reset_index(drop=True, inplace=True)
+
+    print(results_df)
+
+    utils.saveDataFrame(results_df, "results.csv")
+    print("Results saved to results.csv")
