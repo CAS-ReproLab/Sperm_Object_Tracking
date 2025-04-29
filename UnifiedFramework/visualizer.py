@@ -36,7 +36,10 @@ def opticalFlow(frame,data,frame_num,mask,colors):
             mask = cv.line(mask, (prev_x, prev_y), (x, y), colors[int(i)].tolist(), 2)
             mask = cv.circle(mask, (x, y), 2, colors[int(i)].tolist(), -1)
 
-    img = cv.add(frame, mask)
+    #img = cv.add(frame, mask)
+    img = np.copy(frame)
+    locs = np.where(np.sum(mask, axis=2) > 0)
+    img[locs] = mask[locs]
 
     return img
 
