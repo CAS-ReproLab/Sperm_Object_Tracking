@@ -1,0 +1,11 @@
+{
+    "diameter": 11,
+    "minmass": 500,
+    "search_range": 7,
+    "memory": 3,
+    "fps": 149,
+    "pixel_size": 2.0619,
+    "median_filter": "true",
+    "compute_segs": "true",
+    "visualization": "segments"
+}

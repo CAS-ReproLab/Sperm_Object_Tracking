@@ -17,6 +17,8 @@ __pycache__/
 *.pth
 *.csv
 
+!UnifiedFramework/configs/*.json
+
 .DS_Store
 
 
