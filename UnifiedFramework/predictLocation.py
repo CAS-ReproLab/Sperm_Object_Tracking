@@ -10,6 +10,7 @@ from myDatasets import VISEMSimpleDataset
 from myNetworks import LSTMNetwork
 
 import numpy as np
+import shutil
 
 
 class LitNetwork(pl.LightningModule):
@@ -109,7 +110,7 @@ class LitNetwork(pl.LightningModule):
         return None
 
 
-def train_network(network_name="LSTM",batch_size=64,max_epochs=20,learning_rate=1e-4,scheduler="step",workers=8,progress_bar=True):
+def train_network(network_name="LSTM",batch_size=64,max_epochs=50,learning_rate=1e-4,scheduler="step",workers=8,progress_bar=True):
 
     # Load the dataset
     VISEM = VISEMSimpleDataset(root_dir="../VISEM_Simple_Dataset/")
@@ -121,19 +122,25 @@ def train_network(network_name="LSTM",batch_size=64,max_epochs=20,learning_rate=
     hparams = {"network_name": network_name, "batch_size": batch_size, "max_epochs": max_epochs, "learning_rate": learning_rate, "scheduler": scheduler}
 
     model = LitNetwork(2,2, network_name,batch_size,learning_rate,max_epochs,scheduler)
-    checkpoint = pl.callbacks.ModelCheckpoint(monitor='val_loss', save_top_k=1, mode='min')
+    checkpoint = pl.callbacks.ModelCheckpoint(monitor='val_loss',save_top_k=1, mode='min')
     logger = pl_loggers.TensorBoardLogger(save_dir="my_logs/", name=network_name+"_"+scheduler+"_"+str(max_epochs)+"_{lr:.0e}".format(lr=learning_rate))
     logger.log_hyperparams(hparams)
     #logger = pl_loggers.CSVLogger(save_dir="my_logs",name="my_csv_logs")
 
     device = "gpu" # Use 'mps' for Mac M1 or M2 Core, 'gpu' for Windows with Nvidia GPU, or 'cpu' for Windows without Nvidia GPU
 
-    trainer = pl.Trainer(max_epochs=max_epochs, accelerator=device, callbacks=[checkpoint], logger=logger, enable_progress_bar=progress_bar)
+    trainer = pl.Trainer(max_epochs=max_epochs, accelerator=device, callbacks=[checkpoint], logger=logger, enable_progress_bar=progress_bar, log_every_n_steps=10)
     torch.set_float32_matmul_precision('high')
     trainer.fit(model,train_loader,val_loader)
         
     trainer.test(ckpt_path="best", dataloaders=test_loader)
     
+    # Save the checkpoint as a .pth file to the current directory
+    best_model_path = checkpoint.best_model_path
+    local_fn = "best_model.pth"
+
+    shutil.move(best_model_path, local_fn)
+
 
 if __name__ == "__main__":
 
@@ -142,7 +149,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Prediction Configuration')
     parser.add_argument('--network_name', type=str, help='Network name (e.g., "LSTM")', default='LSTM')
     parser.add_argument('--batch_size', type=int, default=64, help='Batch size for training (default: 64)')
-    parser.add_argument('--max_epochs', type=int, default=200, help='Maximum epochs (default: 200)')
+    parser.add_argument('--max_epochs', type=int, default=50, help='Maximum epochs (default: 200)')
     parser.add_argument('--learning_rate', type=float, default=0.0001, help='Learning rate (default: 0.0001)')
     parser.add_argument('--scheduler', type=str, default="step", help='Scheduler type (default: "step")')
     parser.add_argument('--workers', type=int, default=4, help='Workers (default: 8)')

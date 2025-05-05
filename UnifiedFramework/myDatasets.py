@@ -18,6 +18,93 @@ class VISEMSimpleDataset(Dataset):
         self.label_list = [f for f in file_list if f.endswith('.csv')]
         self.video_list = [f for f in file_list if f.endswith('.mp4')]
 
+        self.video_list.sort()
+        self.label_list.sort()
+
+        self.seq_len = seq_len
+
+        # Store a list of the number of sperm in each video
+        self.num_sperm = []
+        for label_file in self.label_list:
+            label_path = os.path.join(self.root_dir, label_file)
+            labels_df = pd.read_csv(label_path)
+            sperm_ids = labels_df['sperm'].unique()
+            self.num_sperm.append(len(sperm_ids))
+
+        self.length = sum(self.num_sperm)
+
+        # Store cumaltive list of sperm counts
+        self.cumlative = np.cumsum(self.num_sperm)
+
+
+    def __getitem__(self, idx):
+        
+        # Find the video and label index corresponding to the current idx
+        #print(self.cumlative)
+        video_idx = np.searchsorted(self.cumlative, idx, side='right')
+        if video_idx > 0:
+            sperm_idx = idx - self.cumlative[video_idx - 1]
+        else:
+            sperm_idx = idx
+
+        # Load the video file
+        video_path = os.path.join(self.root_dir, self.video_list[video_idx])
+        
+        #video_frames = self.decoder.decode(video_path)
+        #video_frames = io.read_video(video_path,pts_unit="sec")[0]  # Read video frames using torchvision
+
+        # Load the label file
+        label_path = video_path.replace('.mp4', '_labels.csv')
+        labels_df = pd.read_csv(label_path)
+
+        # Load the sperm path
+        sperm_ids = labels_df['sperm'].unique()
+        sperm_idx = sperm_ids[sperm_idx]
+        sperm_labels = labels_df[labels_df['sperm'] == sperm_idx]
+        sperm_labels = sperm_labels.sort_values(by='frame')
+        sperm_labels = sperm_labels.reset_index(drop=True)
+
+        # Drop frames to match the sequence length
+        if len(sperm_labels) > self.seq_len:
+            sperm_labels = sperm_labels.iloc[:self.seq_len]
+        elif len(sperm_labels) < self.seq_len:
+            sperm_labels = sperm_labels.reindex(range(self.seq_len), fill_value=-1.0)
+
+        # Get the frames for the selected sperm cell
+        #start_frame = sperm_labels['frame'].min()
+        #end_frame = sperm_labels['frame'].max()
+        #sperm_frames = video_frames[start_frame:end_frame + 1]
+
+        # Get the coordinates of the sperm cell
+        x_coords = sperm_labels['x'].values
+        y_coords = sperm_labels['y'].values
+
+        # Normalize the coordinates to the range [0, 1]
+        if x_coords.max() > 1:
+            height, width = 480, 640 #sperm_frames[0].shape[1:3]
+            x_coords = x_coords / width
+            y_coords = y_coords / height
+
+        coords = np.stack((x_coords, y_coords), axis=1)
+        coords = torch.tensor(coords, dtype=torch.float32)
+
+        return coords
+
+    def __len__(self):
+        return self.length
+    
+
+
+class VISEMSimpleDataset_naive(Dataset):
+    def __init__(self, root_dir, seq_len=8):
+        super(VISEMSimpleDataset, self).__init__()
+
+        self.root_dir = root_dir
+
+        file_list = os.listdir(root_dir)
+        self.label_list = [f for f in file_list if f.endswith('.csv')]
+        self.video_list = [f for f in file_list if f.endswith('.mp4')]
+
         self.length = len(self.label_list)
 
         #self.decoder = VideoDecoder()
