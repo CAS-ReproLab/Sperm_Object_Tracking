@@ -135,9 +135,9 @@ def train_network(network_name="LSTM",batch_size=64,max_epochs=50,learning_rate=
         
     trainer.test(ckpt_path="best", dataloaders=test_loader)
     
-    # Save the checkpoint as a .pth file to the current directory
+    # Save the checkpoint as a .ckpt file to the current directory
     best_model_path = checkpoint.best_model_path
-    local_fn = "best_model.pth"
+    local_fn = "best_model.ckpt"
 
     shutil.move(best_model_path, local_fn)
 
