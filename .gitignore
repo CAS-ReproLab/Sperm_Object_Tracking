@@ -155,3 +155,5 @@ UnifiedFramework.zip
 VISEM-Tracking.zip
 /VISEM-Tracking
 /UnifiedFramework/my_logs
+/UnifiedFramework/cell_detection_dataset
+/UnifiedFramework/lightning_logs
