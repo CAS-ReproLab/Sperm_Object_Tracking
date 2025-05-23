@@ -131,7 +131,7 @@ def runLabeler(video, data):
     wait_time = 1/fps
 
     # Create some random colors
-    max_index = data['sperm'].max()
+    max_index = int(data['sperm'].max())
     colors = utils.generateRandomColors(2*max_index) # Allows for splitting and creating new sperm
     #colors = np.random.randint(100, 255, (2*max_index, 3)) # Allows for splitting and creating new sperm
 
