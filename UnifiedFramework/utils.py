@@ -139,4 +139,7 @@ def interpolateTracks(df):
                         #gt = gt.append({'frame': j, 'sperm': sperm, 'x': x, 'y': y}, ignore_index=True)
                         result = pd.concat([result, pd.DataFrame([[j, sperm, x, y]], columns=['frame', 'sperm', 'x', 'y'])], ignore_index=True)
 
+    # Fill in missing fields
+    result = result.fillna(0)
+
     return result
