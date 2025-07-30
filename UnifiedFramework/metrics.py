@@ -168,7 +168,7 @@ def appendMergedTrajectory(ref_tracks, comp_tracks, traj):
 
     return traj
 
-def computeMetrics(ref_tracks, comp_tracks, traj):
+def computeMetricsFromTracks(ref_tracks, comp_tracks, traj):
 
     graph_operations = \
                 count_acyclic_graph_correction_operations(
@@ -213,6 +213,32 @@ def computeMetrics(ref_tracks, comp_tracks, traj):
     
     return results
 
+def computeMetrics(gt_df,pred_df):
+
+    gt_u = utils.dropDuplicates(gt_df)
+    pred_u = utils.dropDuplicates(pred_df)
+
+    gt = utils.interpolateTracks(gt_u)
+    pred = utils.interpolateTracks(pred_u)
+
+    pred_filter = filterSperm(pred)
+    gt_filter = filterSperm(gt)
+
+    pred_tracks = makeTrackData(pred)
+    gt_tracks = makeTrackData(gt)
+    pred_filter_tracks = makeTrackData(pred_filter)
+    gt_filter_tracks = makeTrackData(gt_filter)
+
+    traj = makeTrajectoryData(pred,gt)
+    traj_filter = makeTrajectoryData(pred_filter,gt_filter)
+
+    traj = appendMergedTrajectory(gt_tracks, pred_tracks, traj)
+    traj_filter = appendMergedTrajectory(gt_filter_tracks, pred_filter_tracks, traj_filter)
+
+    results = computeMetricsFromTracks(gt_tracks, pred_tracks, traj)
+    results_filter = computeMetricsFromTracks(gt_filter_tracks, pred_filter_tracks, traj_filter)
+
+    return results, results_filter
 
 if __name__ == "__main__":
     
@@ -251,29 +277,8 @@ if __name__ == "__main__":
     pred_src = utils.loadDataFrame(predictionfile)
     gt_src = utils.loadDataFrame(groundtruthfile)
         
-    gt_u = utils.dropDuplicates(gt_src)
-    pred_u = utils.dropDuplicates(pred_src)
-
-    gt = utils.interpolateTracks(gt_u)
-    pred = utils.interpolateTracks(pred_u)
-
-    pred_filter = filterSperm(pred)
-    gt_filter = filterSperm(gt)
-
-    pred_tracks = makeTrackData(pred)
-    gt_tracks = makeTrackData(gt)
-    pred_filter_tracks = makeTrackData(pred_filter)
-    gt_filter_tracks = makeTrackData(gt_filter)
-
-    traj = makeTrajectoryData(pred,gt)
-    traj_filter = makeTrajectoryData(pred_filter,gt_filter)
-
-    traj = appendMergedTrajectory(gt_tracks, pred_tracks, traj)
-    traj_filter = appendMergedTrajectory(gt_filter_tracks, pred_filter_tracks, traj_filter)
-
-    results = computeMetrics(gt_tracks, pred_tracks, traj)
-    results_filter = computeMetrics(gt_filter_tracks, pred_filter_tracks, traj_filter)
-
+    results, results_filter = computeMetrics(gt_src, pred_src)
+    
     if not report_all:
         # Filter the results to only include the metrics we want to report
         results = {key: results[key] for key in ["DET","TRA", "LNK", "TF", "MOTA", "IDF1", "HOTA"]}
