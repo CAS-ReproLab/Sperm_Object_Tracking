@@ -215,8 +215,12 @@ def computeMetricsFromTracks(ref_tracks, comp_tracks, traj):
 
 def computeMetrics(gt_df,pred_df):
 
-    gt_u = utils.dropDuplicates(gt_df)
-    pred_u = utils.dropDuplicates(pred_df)
+    # Ensure the dataframes are sorted by 'sperm' then 'frame' to gaurantee correct calculations
+    gt_sorted = gt_df.sort_values(by=['sperm', 'frame']).reset_index(drop=True)
+    pred_sorted = pred_df.sort_values(by=['sperm', 'frame']).reset_index(drop=True)
+
+    gt_u = utils.dropDuplicates(gt_sorted)
+    pred_u = utils.dropDuplicates(pred_sorted)
 
     gt = utils.interpolateTracks(gt_u)
     pred = utils.interpolateTracks(pred_u)
