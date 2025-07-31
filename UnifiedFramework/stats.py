@@ -471,11 +471,12 @@ def bcf (data, fps=9, pixel_size=0.26, win_size=5):
 
     return data
 
-def computeAllStats(data,fps=9,pixel_size=1.0476,win_size=5):
+def computeAllStats(data,fps=9,pixel_size=1.0476,win_size=5, interpolate=True):
     '''Compute all statistics for each sperm cell and add them to the dataframe.
     '''
     # Interpolate missing frames
-    data = interpolate_missing_frames(data)
+    if interpolate:
+        data = interpolate_missing_frames(data)
 
     # Calculate average path velocity (VAP)
     data = averagePathVelocity(data, fps=fps, pixel_size=pixel_size, win_size=win_size)
