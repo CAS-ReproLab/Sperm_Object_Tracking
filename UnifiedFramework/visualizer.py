@@ -9,7 +9,11 @@ import utils
 import tkinter as tk
 from tkinter import filedialog
 
-def opticalFlow(frame,data,frame_num,mask,colors):
+def opticalFlow(frame,data,frame_num,mask,colors,color_dropoff=0.95,mask_cutoff=50):
+
+    # Slowly fade color mask to create a trail effect
+    if color_dropoff < 1.0 and color_dropoff > 0.0:
+        cv.addWeighted(mask, color_dropoff, np.zeros_like(mask), 1 - color_dropoff, 0, mask)
 
      # Get data for the current frame and previous frame
     current = data[data['frame'] == frame_num]
@@ -33,12 +37,13 @@ def opticalFlow(frame,data,frame_num,mask,colors):
             #prev_y = min(max(prev_y, 0), frame.shape[0])
 
             # Draw
-            mask = cv.line(mask, (prev_x, prev_y), (x, y), colors[int(i)].tolist(), 2)
-            mask = cv.circle(mask, (x, y), 2, colors[int(i)].tolist(), -1)
+            cv.line(mask, (prev_x, prev_y), (x, y), colors[int(i)].tolist(), 2)
+            cv.circle(mask, (x, y), 2, colors[int(i)].tolist(), -1)
 
     #img = cv.add(frame, mask)
     img = np.copy(frame)
-    locs = np.where(np.sum(mask, axis=2) > 0)
+    # TODO refine mask cutoff to be more precise (not based on RGB)
+    locs = np.where(np.sum(mask, axis=2) > mask_cutoff)
     img[locs] = mask[locs]
 
     return img
