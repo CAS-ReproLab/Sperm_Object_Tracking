@@ -198,7 +198,6 @@ def computeMetricsFromTracks(ref_tracks, comp_tracks, traj):
         ref_tracks,
         traj["labels_ref"], traj["mapped_ref"], traj["mapped_comp"])
 
-
     results.update(mota(
         traj["labels_ref_merged"], traj["labels_comp_merged"],
         traj["mapped_ref_merged"], traj["mapped_comp_merged"]))
@@ -213,7 +212,7 @@ def computeMetricsFromTracks(ref_tracks, comp_tracks, traj):
     
     return results
 
-def computeMetrics(gt_df,pred_df):
+def computeMetrics(gt_df,pred_df,return_filtered=True):
 
     # Ensure the dataframes are sorted by 'sperm' then 'frame' to gaurantee correct calculations
     gt_sorted = gt_df.sort_values(by=['sperm', 'frame']).reset_index(drop=True)
@@ -225,24 +224,32 @@ def computeMetrics(gt_df,pred_df):
     gt = utils.interpolateTracks(gt_u)
     pred = utils.interpolateTracks(pred_u)
 
-    pred_filter = filterSperm(pred)
-    gt_filter = filterSperm(gt)
-
     pred_tracks = makeTrackData(pred)
     gt_tracks = makeTrackData(gt)
-    pred_filter_tracks = makeTrackData(pred_filter)
-    gt_filter_tracks = makeTrackData(gt_filter)
 
     traj = makeTrajectoryData(pred,gt)
-    traj_filter = makeTrajectoryData(pred_filter,gt_filter)
 
     traj = appendMergedTrajectory(gt_tracks, pred_tracks, traj)
-    traj_filter = appendMergedTrajectory(gt_filter_tracks, pred_filter_tracks, traj_filter)
 
     results = computeMetricsFromTracks(gt_tracks, pred_tracks, traj)
-    results_filter = computeMetricsFromTracks(gt_filter_tracks, pred_filter_tracks, traj_filter)
 
-    return results, results_filter
+    if return_filtered:
+        pred_filter = filterSperm(pred)
+        gt_filter = filterSperm(gt)
+
+        pred_filter_tracks = makeTrackData(pred_filter)
+        gt_filter_tracks = makeTrackData(gt_filter)
+
+        traj_filter = makeTrajectoryData(pred_filter,gt_filter)
+
+        traj_filter = appendMergedTrajectory(gt_filter_tracks, pred_filter_tracks, traj_filter)
+
+        results_filter = computeMetricsFromTracks(gt_filter_tracks, pred_filter_tracks, traj_filter)
+
+        return results, results_filter
+    
+    else:
+        return results
 
 if __name__ == "__main__":
     
