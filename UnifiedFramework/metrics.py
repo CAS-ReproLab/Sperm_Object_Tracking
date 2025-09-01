@@ -202,6 +202,21 @@ def computeMetricsFromTracks(ref_tracks, comp_tracks, traj):
         traj["labels_ref_merged"], traj["labels_comp_merged"],
         traj["mapped_ref_merged"], traj["mapped_comp_merged"]))
 
+
+    # Remove empty tracks before computing HOTA and IDF1
+    remove_inds = []
+    for i in range(len(traj["mapped_ref_merged"])):
+        if traj["mapped_ref_merged"][i] == []:
+            remove_inds.append(i)
+        elif traj["mapped_comp_merged"][i] == []:
+            remove_inds.append(i)
+    if len(remove_inds) > 0:
+        print("Warning removing unmatched frames for HOTA and IDF1 score.")
+        traj["mapped_ref_merged"] = [x for i, x in enumerate(traj["mapped_ref_merged"]) if i not in remove_inds]
+        traj["mapped_comp_merged"] = [x for i, x in enumerate(traj["mapped_comp_merged"]) if i not in remove_inds]
+        traj["labels_ref_merged"] = [x for i, x in enumerate(traj["labels_ref_merged"]) if i not in remove_inds]
+        traj["labels_comp_merged"] = [x for i, x in enumerate(traj["labels_comp_merged"]) if i not in remove_inds]
+
     results.update(hota(
         traj["labels_ref_merged"], traj["labels_comp_merged"],
         traj["mapped_ref_merged"], traj["mapped_comp_merged"]))
