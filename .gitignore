@@ -18,6 +18,8 @@ __pycache__/
 *.csv
 
 !UnifiedFramework/configs/*.json
+!UnifiedFramework/assets/*
+!UnifiedFramework/SchmidtDataset/*
 
 .DS_Store
 
