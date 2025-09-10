@@ -1,6 +1,6 @@
 # Unified Framework
-This repository contains code for sperm object tracking in microscopy videos.This is the official code for [A framework for evaluating predicted sperm trajectories in crowded microscopy videos](https://www.biorxiv.org/content/10.1101/2025.02.20.639342v1).
-It runs on the [Trackpy Libary](https://soft-matter.github.io/trackpy/v0.7/). For teh tracking metrics, the code is taken from [Py-CTCMetrics](https://github.com/CellTrackingChallenge/py-ctcmetrics).
+This repository contains code for sperm object tracking in microscopy videos. This is the official code for [A framework for evaluating predicted sperm trajectories in crowded microscopy videos](https://www.biorxiv.org/content/10.1101/2025.02.20.639342v1).
+It runs on the [Trackpy Libary](https://soft-matter.github.io/trackpy/v0.7/). For the tracking metrics, the code is taken from [Py-CTCMetrics](https://github.com/CellTrackingChallenge/py-ctcmetrics).
 
 To get started, once Trackpy, OpenCV, and other needed python packages are installed, simply run
 
