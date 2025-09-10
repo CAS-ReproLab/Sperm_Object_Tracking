@@ -21,6 +21,19 @@ __pycache__/
 !UnifiedFramework/assets/*
 !UnifiedFramework/SchmidtDataset/*
 
+UnifiedFramework/Comparisons/comparisons_data.zip
+*.mat
+UnifiedFramework.zip
+VISEM-Tracking.zip
+/VISEM-Tracking
+/UnifiedFramework/my_logs
+/UnifiedFramework/lightning_logs
+/UnifiedFramework/cell_detection_dataset
+/OldFiles
+/UnifiedFramework/PaperOutputs
+/UnifiedFramework/OldCode
+/UnifiedFramework/OldNotebooks
+
 .DS_Store
 
 
@@ -153,15 +166,6 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
-UnifiedFramework/Comparisons/comparisons_data.zip
-*.mat
-UnifiedFramework.zip
-VISEM-Tracking.zip
-/VISEM-Tracking
-/UnifiedFramework/my_logs
-/UnifiedFramework/lightning_logs
-/UnifiedFramework/cell_detection_dataset
-/OldFiles
-/UnifiedFramework/PaperOutputs
-/UnifiedFramework/OldCode
+
 /UnifiedFramework/OldNotebooks
+/UnifiedFramework/OldCode
