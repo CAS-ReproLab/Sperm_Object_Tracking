@@ -10,8 +10,8 @@ and select the video file and recommended configuration file for your video. We 
 
 Alternatively, if you want to use more direct modification, you can run the `sandbox_template.ipynb` Jupyter notebook file.
 
-<p align="center" width="512px">
-  <img src="assets/tracking_example.png" />
+<p align="center">
+  <img src="assets/tracking_example.png" width="512"/>
 </p>
 
 
