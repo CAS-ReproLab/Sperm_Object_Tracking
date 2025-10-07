@@ -18,6 +18,21 @@ __pycache__/
 *.csv
 
 !UnifiedFramework/configs/*.json
+!UnifiedFramework/assets/*
+!UnifiedFramework/SchmidtDataset/*
+
+UnifiedFramework/Comparisons/comparisons_data.zip
+*.mat
+UnifiedFramework.zip
+VISEM-Tracking.zip
+/VISEM-Tracking
+/UnifiedFramework/my_logs
+/UnifiedFramework/lightning_logs
+/UnifiedFramework/cell_detection_dataset
+/OldFiles
+/UnifiedFramework/PaperOutputs
+/UnifiedFramework/OldCode
+/UnifiedFramework/OldNotebooks
 
 .DS_Store
 
@@ -159,3 +174,6 @@ VISEM-Tracking.zip
 /UnifiedFramework/my_logs
 /UnifiedFramework/cell_detection_dataset
 /UnifiedFramework/lightning_logs
+
+/UnifiedFramework/OldNotebooks
+/UnifiedFramework/OldCode
