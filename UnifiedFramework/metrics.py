@@ -239,6 +239,9 @@ def computeMetrics(gt_df,pred_df,return_filtered=True):
     gt = utils.interpolateTracks(gt_u)
     pred = utils.interpolateTracks(pred_u)
 
+    print("GT sperm count:", gt['sperm'].nunique())
+    print("Pred sperm count:", pred['sperm'].nunique())
+
     pred_tracks = makeTrackData(pred)
     gt_tracks = makeTrackData(gt)
 
@@ -251,6 +254,9 @@ def computeMetrics(gt_df,pred_df,return_filtered=True):
     if return_filtered:
         pred_filter = filterSperm(pred)
         gt_filter = filterSperm(gt)
+
+        print("GT filtered sperm count:", gt_filter['sperm'].nunique())
+        print("Pred filtered sperm count:", pred_filter['sperm'].nunique())
 
         pred_filter_tracks = makeTrackData(pred_filter)
         gt_filter_tracks = makeTrackData(gt_filter)
