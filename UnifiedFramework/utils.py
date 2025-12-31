@@ -40,6 +40,10 @@ def saveVideo(frames, filename, fps=30):
 def loadDataFrame(filename, convert_segmentation=False):
     data = pd.read_csv(filename)
 
+    # Convert frame and sperm columns to integer
+    data['frame'] = data['frame'].astype(int)
+    data['sperm'] = data['sperm'].astype(int)
+
     # Convert the string representation of segmentation to a list
     if convert_segmentation:
         print("Converting segmentations to list...")
