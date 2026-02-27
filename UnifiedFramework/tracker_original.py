@@ -115,121 +115,6 @@ def trackCentroids(f, search_range=21, memory=3, adaptive_stop=0.2, adaptive_ste
     
     return t
 
-def trackCentroids_forecaster(f, window_size=5, target_size=5, model_fn="forecast_tracker_model_5_5.pkl", dist_cutoff=20):
-
-    # Load the trained model and set up the dataframe for tracking
-    import joblib
-    from tqdm import trange
-    model = joblib.load(model_fn)
-
-    df = f.copy()
-    df['sperm'] = -1
-    next_sperm_id = 0
-
-    # Assign IDs to first frame
-    first_frame_detections = df[df['frame'] == df['frame'].min()]   
-    for index, det in first_frame_detections.iterrows():
-        df.at[index, 'sperm'] = next_sperm_id
-        next_sperm_id += 1
-
-    for frame_num in trange(df['frame'].min(), df['frame'].max()):
-        frame_detections = df[df['frame'] == frame_num]
-        next_frame_num = frame_num + 1
-
-        if next_frame_num > df['frame'].max():
-            break
-
-        # --- PASS 1: Try to link all existing tracks into the next frame ---
-        for index, row in frame_detections.iterrows():
-            sperm_id = row["sperm"]
-
-            if sperm_id == -1:
-                continue  # Skip unmatched for now, handle after
-
-            # If this sperm already exists in the next frame, skip
-            if sperm_id in df[df['frame'] == next_frame_num]['sperm'].values:
-                continue
-
-            prev_traj = df[df["sperm"] == sperm_id].sort_values(by='frame')
-
-            if len(prev_traj) < window_size:
-                # --- Radius matching ---
-                next_frame_detections = df[df['frame'] == next_frame_num]
-                if next_frame_detections.empty:
-                    continue
-
-                min_dist = float('inf')
-                best_index = -1
-                for det_index, det_row in next_frame_detections.iterrows():
-                    dist = np.sqrt((det_row['x'] - row['x']) ** 2 + (det_row['y'] - row['y']) ** 2)
-                    if dist < min_dist and dist < dist_cutoff and det_row['sperm'] == -1:
-                        min_dist = dist
-                        best_index = det_index
-
-                if best_index != -1:
-                    df.at[best_index, 'sperm'] = sperm_id
-
-            else:
-                # --- Model prediction matching ---
-                input_window = []
-                for w in range(window_size):
-                    prev_row = prev_traj[prev_traj['frame'] == frame_num - w - 1]
-                    cur_row = prev_traj[prev_traj['frame'] == frame_num - w]
-                    if prev_row.empty or cur_row.empty:
-                        input_window.extend([0, 0])
-                    else:
-                        input_window.extend([cur_row.iloc[0]['x'] - prev_row.iloc[0]['x'],
-                                             cur_row.iloc[0]['y'] - prev_row.iloc[0]['y']])
-                input_window = np.array(input_window).reshape(1, -1)
-
-                prediction = model.predict(input_window)[0]
-
-                predicted_positions = []
-                last_x = row['x']
-                last_y = row['y']
-                for t in range(target_size):
-                    last_x += prediction[2 * t]
-                    last_y += prediction[2 * t + 1]
-                    predicted_positions.append((last_x, last_y))
-
-                for t in range(target_size):
-                    target_frame = frame_num + 1 + t
-
-                    if target_frame > df['frame'].max():
-                        break
-
-                    target_detections = df[df['frame'] == target_frame]
-                    if target_detections.empty:
-                        continue
-
-                    # Skip if already linked into this frame
-                    if sperm_id in target_detections['sperm'].values:
-                        continue
-
-                    pred_x, pred_y = predicted_positions[t]
-
-                    min_dist = float('inf')
-                    best_index = -1
-                    for det_index, det_row in target_detections.iterrows():
-                        dist = np.sqrt((det_row['x'] - pred_x) ** 2 + (det_row['y'] - pred_y) ** 2)
-                        if dist < min_dist and dist < dist_cutoff and det_row['sperm'] == -1:
-                            min_dist = dist
-                            best_index = det_index
-
-                    if best_index != -1:
-                        df.at[best_index, 'sperm'] = sperm_id
-
-        # --- PASS 2: Assign new IDs to anything still unmatched in the next frame ---
-        next_frame_detections = df[df['frame'] == next_frame_num]
-        for index, det_row in next_frame_detections.iterrows():
-            if det_row['sperm'] == -1:
-                df.at[index, 'sperm'] = next_sperm_id
-                next_sperm_id += 1
-
-    print("Here")
-
-    return df
-
 def segmentCells(frames, t):
     """
     Segment full sperm cells in each frame using the centroids and adaptive thresholding
@@ -346,8 +231,7 @@ def processVideo(videofile, compute_segs=True):
     f = determineCentroids(frames, 5, 50, 5)
 
     # Track the centroids
-    #t = trackCentroids(f)
-    t = trackCentroids_forecaster(f)
+    t = trackCentroids(f)
 
     # Segment the cells
     # Segment the cells

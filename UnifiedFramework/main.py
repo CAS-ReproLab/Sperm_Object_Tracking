@@ -4,6 +4,7 @@ import argparse
 import stats
 import utils
 from tracker import determineCentroids, trackCentroids, segmentCells
+from tracker import trackCentroids_forecaster
 from visualizer import runVisualization
 
 import tkinter as tk
@@ -68,7 +69,8 @@ if __name__ == '__main__':
     f = determineCentroids(frames,int(config["diameter"]),int(config["minmass"]))
 
     # Track the centroids
-    t = trackCentroids(f,int(config["search_range"]),int(config["memory"]))
+    #t = trackCentroids(f,int(config["search_range"]),int(config["memory"]))
+    t = trackCentroids_forecaster(f)
 
     # Segment the cells
     if config["compute_segs"]=="true":
