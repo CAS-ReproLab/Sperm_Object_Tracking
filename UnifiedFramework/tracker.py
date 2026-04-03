@@ -15,6 +15,8 @@ import pandas as pd
 import tkinter as tk
 from tkinter import filedialog
 
+from crossover_repair import flagMerges_detection, flagMerges_track, repairTracks
+
 #import pims
 #@pims.pipeline
 #def as_grey(frame):
@@ -334,7 +336,7 @@ def segmentCells(frames, t):
     return final
 
 
-def processVideo(videofile, compute_segs=True):
+def processVideo(videofile, compute_segs=True, enable_repair=False):
 
     # Open the video file
     frames = utils.loadVideo(videofile,as_gray=True)
@@ -346,17 +348,39 @@ def processVideo(videofile, compute_segs=True):
     f = determineCentroids(frames, 5, 50, 5)
 
     # Track the centroids
-    #t = trackCentroids(f)
-    t = trackCentroids_forecaster(f)
+    t = trackCentroids(f)
+    #t = trackCentroids_forecaster(f)
 
-    # Segment the cells
     # Segment the cells
     if compute_segs:
         t = segmentCells(frames, t)
-        return t
-    else:
-        final = segmentCells(frames, t)
-        return final
+
+    if enable_repair:
+        t = flagMerges_detection(t)
+            # window=det_window,
+            # radius=det_radius,
+            # z_thresh=det_z_thresh,
+            # ratio_thresh=det_ratio_thresh,
+            # )
+
+
+        t = flagMerges_track(t)
+                # z_thresh=track_z_thresh,
+                # ratio_thresh=track_ratio_thresh,
+                # hist_len=track_hist_len,
+                # )
+
+
+        t = repairTracks(t)
+            # enable_continuity_repair=enable_continuity_repair,
+            # enable_swap_repair=enable_swap_repair,
+            # gap_fill_mode=gap_fill_mode,
+            # child_max_gap=child_max_gap,
+            # child_max_distance=child_max_distance,
+            # verbose=repair_verbose,
+            # )
+
+    return t
 
 
 def labelIm2Array(label_im, num_labels):
@@ -378,12 +402,14 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Track cells in a video')
     parser.add_argument('--videofile', type=str, default=None, help='Path to the video file')
+    parser.add_argument('--enable_repair', action='store_true', help='Enable reparametrization of tracks')
     parser.add_argument('--output', type=str, default=None, help='Path to the output file')
     parser.add_argument('--no_segmentation', action='store_false', help='Do not segment the cells')
 
     videofile = parser.parse_args().videofile
     outputfile = parser.parse_args().output
     compute_segs = parser.parse_args().no_segmentation
+    enable_repair = parser.parse_args().enable_repair
 
     if videofile is None:
         root = tk.Tk()
@@ -395,7 +421,7 @@ if __name__ == '__main__':
         else:
             raise ValueError("No video file selected.")
 
-    final = processVideo(videofile,compute_segs)
+    final = processVideo(videofile,compute_segs,enable_repair)
 
     if outputfile is None:
         outputfile = ".".join(videofile.split('.')[:-1]) + '.csv'

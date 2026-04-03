@@ -2,6 +2,8 @@ import argparse
 import os
 import json
 import pickle
+
+from pandas.core import frame
 import numpy as np
 import cv2 as cv
 import ast
@@ -213,6 +215,35 @@ def flowSpeed(frame, data, frame_num, mask, static_threshold, lower_threshold, u
 
     return img
 
+def crossover(frame, data, frame_num):
+    
+    mask = np.zeros_like(frame)
+
+    # Red = spatial crossover, Blue = temporal crossover, Green = both
+    # Get the locations where crossover is flagged
+    spatial_crossovers = data[(data['frame'] == frame_num) & (data['merge_flag_det'] == 1)]
+    temporal_crossovers = data[(data['frame'] == frame_num) & (data['xo_track_flag'] == 1)]
+    both_crossovers = data[(data['frame'] == frame_num) & (data['merge_flag_final'] == 1)]
+
+    for _, sperm in spatial_crossovers.iterrows():
+        x = int(sperm['x'])
+        y = int(sperm['y'])
+        mask = cv.circle(mask, (x, y), 10, (255, 0, 0), -1)  # Red for spatial crossover
+
+    for _, sperm in temporal_crossovers.iterrows():
+        x = int(sperm['x'])
+        y = int(sperm['y'])
+        mask = cv.circle(mask, (x, y), 10, (0, 0, 255), -1)  # Blue for temporal crossover
+
+    for _, sperm in both_crossovers.iterrows():
+        x = int(sperm['x'])
+        y = int(sperm['y'])
+        mask = cv.circle(mask, (x, y), 10, (0, 255, 0), -1)  # Green for both
+
+    img = cv.add(frame, mask)
+    return img
+
+
 def createVisualization(video, data, visualization="flow", colors=None):
     
     # Create some random colors
@@ -311,6 +342,9 @@ def runVisualization(videofile, data, visualization="flow",savefile=None):
 
         elif visualization == "sflow":
             img = flowSpeed(frame, data, frame_num, mask, static_threshold, lower_threshold, upper_threshold)
+
+        elif visualization == "crossover":
+            img = crossover(frame, data, frame_num)
 
         elif visualization == "original":
             img = frame
