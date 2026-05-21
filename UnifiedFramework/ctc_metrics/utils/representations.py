@@ -381,7 +381,7 @@ def assign_comp_to_ref(
     ):
         for i in l_gt:
             if i in m_gt:
-                m = m_res[int(np.argwhere(np.asarray(m_gt) == i)[0])]
+                m = m_res[int(np.argwhere(np.asarray(m_gt) == i)[0][0])]
                 track_assignments[i][frame] = m
                 counts = np.sum(np.asarray(m_res) == m)
                 if counts > 1:

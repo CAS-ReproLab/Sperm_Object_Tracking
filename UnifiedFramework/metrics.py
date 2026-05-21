@@ -227,6 +227,104 @@ def computeMetricsFromTracks(ref_tracks, comp_tracks, traj):
     
     return results
 
+def computeCrossoverMetrics(gt_df, pred_df, min_likelihood=0.4, threshold=25.0):
+    """
+    Run tracking metrics restricted to trajectories involved in GT crossover events.
+
+    Because GT and predicted sperm IDs are independent label spaces, we first run
+    a full Hungarian spatial match on both complete datasets to discover which
+    predicted IDs ever corresponded to a GT sperm that was part of a crossover.
+    We then re-run metrics on just those filtered subsets.
+
+    Parameters
+    ----------
+    gt_df, pred_df : pd.DataFrame
+        Raw ground-truth and prediction DataFrames (columns: frame, x, y, sperm).
+    min_likelihood : float
+        Only GT crossover events at or above this likelihood are used (default 0.4).
+    threshold : float
+        Proximity threshold in pixels passed to detect_crossovers (default 25.0).
+
+    Returns
+    -------
+    dict with keys:
+        'results'           : metrics dict from computeMetricsFromTracks
+        'gt_crossover_ids'  : set of GT sperm IDs involved in crossovers
+        'pred_crossover_ids': set of pred sperm IDs matched to those GT sperm
+        'events'            : crossover events DataFrame
+    Returns None if no crossover events are found above min_likelihood.
+    """
+    from crossover_detector import detect_crossovers
+
+    # --- 1. Preprocess (mirrors computeMetrics) ---
+    gt_sorted = gt_df.sort_values(['sperm', 'frame']).reset_index(drop=True)
+    pred_sorted = pred_df.sort_values(['sperm', 'frame']).reset_index(drop=True)
+
+    gt_u = utils.dropDuplicates(gt_sorted)
+    pred_u = utils.dropDuplicates(pred_sorted)
+
+    gt = utils.interpolateTracks(gt_u)
+    pred = utils.interpolateTracks(pred_u)
+
+    # --- 2. Detect crossovers in GT ---
+    print(f"Detecting crossovers in GT (threshold={threshold}px, min_likelihood={min_likelihood})...")
+    events = detect_crossovers(gt, threshold=threshold)
+    events = events[events['likelihood'] >= min_likelihood].reset_index(drop=True)
+
+    if events.empty:
+        print(f"No crossover events found at likelihood >= {min_likelihood}. "
+              "Try lowering --crossover-likelihood or raising --crossover-threshold.")
+        return None
+
+    gt_crossover_ids = set(events['sperm_a'].tolist() + events['sperm_b'].tolist())
+    print(f"  {len(events)} crossover events involving {len(gt_crossover_ids)} GT sperm: "
+          f"{sorted(gt_crossover_ids)}")
+
+    # --- 3. Map GT crossover IDs -> pred IDs via full-data spatial matching ---
+    # We use the full dataset here so the Hungarian assignment is globally optimal,
+    # giving the most accurate GT<->pred ID correspondence before we subset.
+    print("Mapping GT crossover sperm to predicted sperm via spatial matching...")
+    traj_full = makeTrajectoryData(pred, gt)
+
+    pred_crossover_ids = set()
+    for frame_gt_ids, frame_pred_ids in zip(traj_full['mapped_ref'], traj_full['mapped_comp']):
+        for gt_id, pred_id in zip(frame_gt_ids, frame_pred_ids):
+            if gt_id in gt_crossover_ids:
+                pred_crossover_ids.add(pred_id)
+
+    print(f"  {len(pred_crossover_ids)} predicted sperm matched to crossover GT sperm: "
+          f"{sorted(pred_crossover_ids)}")
+
+    # --- 4. Filter both DataFrames to crossover-involved sperm ---
+    gt_cross = gt[gt['sperm'].isin(gt_crossover_ids)].copy()
+    pred_cross = pred[pred['sperm'].isin(pred_crossover_ids)].copy()
+
+    if gt_cross.empty or pred_cross.empty:
+        print("Warning: filtered DataFrames are empty — no metrics can be computed.")
+        return None
+
+    print(f"  GT subset:   {gt_cross['sperm'].nunique()} sperm, "
+          f"{gt_cross['frame'].nunique()} frames")
+    print(f"  Pred subset: {pred_cross['sperm'].nunique()} sperm, "
+          f"{pred_cross['frame'].nunique()} frames")
+
+    # --- 5. Compute metrics on the filtered subset ---
+    gt_tracks = makeTrackData(gt_cross)
+    pred_tracks = makeTrackData(pred_cross)
+
+    traj_cross = makeTrajectoryData(pred_cross, gt_cross)
+    traj_cross = appendMergedTrajectory(gt_tracks, pred_tracks, traj_cross)
+
+    results = computeMetricsFromTracks(gt_tracks, pred_tracks, traj_cross)
+
+    return {
+        'results': results,
+        'gt_crossover_ids': gt_crossover_ids,
+        'pred_crossover_ids': pred_crossover_ids,
+        'events': events,
+    }
+
+
 def computeMetrics(gt_df,pred_df,return_filtered=True):
 
     # Ensure the dataframes are sorted by 'sperm' then 'frame' to gaurantee correct calculations
@@ -267,8 +365,12 @@ def computeMetrics(gt_df,pred_df,return_filtered=True):
 
         results_filter = computeMetricsFromTracks(gt_filter_tracks, pred_filter_tracks, traj_filter)
 
-        return results, results_filter
-    
+        counts = {
+            'unfiltered': gt['sperm'].nunique(),
+            'filtered': gt_filter['sperm'].nunique(),
+        }
+        return results, results_filter, counts
+
     else:
         return results
 
@@ -279,10 +381,17 @@ if __name__ == "__main__":
     parser.add_argument('--prediction', type=str, default=None, help='Path to the prediction csv file')
     parser.add_argument('--groundtruth', type=str, default=None, help='Path to the ground truth csv file')
     parser.add_argument('--all', action='store_true', help='Compute all metrics')
+    parser.add_argument('--crossover', action='store_true',
+                        help='Compute metrics restricted to crossover-involved trajectories')
+    parser.add_argument('--crossover-likelihood', type=float, default=0.4,
+                        help='Min crossover likelihood to include (default: 0.4)')
+    parser.add_argument('--crossover-threshold', type=float, default=25.0,
+                        help='Proximity threshold in pixels for crossover detection (default: 25.0)')
 
-    predictionfile = parser.parse_args().prediction
-    groundtruthfile = parser.parse_args().groundtruth
-    report_all = parser.parse_args().all
+    args = parser.parse_args()
+    predictionfile = args.prediction
+    groundtruthfile = args.groundtruth
+    report_all = args.all
 
     if predictionfile is None:
         root = tk.Tk()
@@ -308,23 +417,62 @@ if __name__ == "__main__":
     # Load as Pandas DataFrame
     pred_src = utils.loadDataFrame(predictionfile)
     gt_src = utils.loadDataFrame(groundtruthfile)
-        
-    results, results_filter = computeMetrics(gt_src, pred_src)
-    
+
+    # --- Always run standard full metrics ---
+    results, results_filter, counts = computeMetrics(gt_src, pred_src)
+
+    key_metrics = ["DET", "LNK", "TRA", "TF", "MOTA", "IDF1", "HOTA"]
     if not report_all:
-        # Filter the results to only include the metrics we want to report
-        results = {key: results[key] for key in ["DET", "LNK", "TRA", "TF", "MOTA", "IDF1", "HOTA"]}
-        results_filter = {key: results_filter[key] for key in ["DET", "LNK", "TRA", "TF", "MOTA", "IDF1", "HOTA"]}
+        results        = {k: results[k]        for k in key_metrics if k in results}
+        results_filter = {k: results_filter[k] for k in key_metrics if k in results_filter}
 
-    # Concatenate results into dataframe
-    results_df = pd.DataFrame(columns=["Metric", "Unfiltered", "Filtered"])
+    results_df = pd.DataFrame(
+        [[k, results[k], results_filter[k]] for k in results],
+        columns=["Metric", "Unfiltered", "Filtered"]
+    )
+    # Prepend GT sperm count row
+    count_row = pd.DataFrame(
+        [["GT Sperm", counts['unfiltered'], counts['filtered']]],
+        columns=["Metric", "Unfiltered", "Filtered"]
+    )
+    results_df = pd.concat([count_row, results_df], ignore_index=True)
 
-    for key,val in results.items():        
-        results_df = pd.concat([results_df, pd.DataFrame([[key, val, results_filter[key]]], columns=["Metric", "Unfiltered", "Filtered"])], ignore_index=True)
+    if args.crossover:
+        # --- Also run crossover-filtered metrics and add as a third column ---
+        crossover_result = computeCrossoverMetrics(
+            gt_src, pred_src,
+            min_likelihood=args.crossover_likelihood,
+            threshold=args.crossover_threshold,
+        )
+        if crossover_result is None:
+            print("Could not compute crossover metrics.")
+        else:
+            print(f"\n  GT crossover sperm:   {sorted(int(x) for x in crossover_result['gt_crossover_ids'])}")
+            print(f"  Pred matched sperm:   {sorted(int(x) for x in crossover_result['pred_crossover_ids'])}")
+            print(f"  Crossover events:     {len(crossover_result['events'])}")
 
-    #results_df.reset_index(drop=True, inplace=True)
+            res_cross = crossover_result['results']
+            if not report_all:
+                res_cross = {k: res_cross[k] for k in key_metrics if k in res_cross}
 
-    print(results_df)
+            cross_count = len(crossover_result['gt_crossover_ids'])
+            results_df["Crossover"] = results_df["Metric"].map(
+                {"GT Sperm": cross_count, **res_cross}
+            )
 
-    utils.saveDataFrame(results_df, "results.csv")
-    print("Results saved to results.csv")
+        savefile = "results_crossover.csv"
+    else:
+        savefile = "results.csv"
+
+    print()
+    # Print with counts as integers and metric values as floats
+    numeric_cols = [c for c in results_df.columns if c != "Metric"]
+    display_df = results_df.copy()
+    for col in numeric_cols:
+        display_df[col] = display_df[col].apply(
+            lambda x: f"{int(x)}" if pd.notna(x) and float(x) == int(float(x)) and abs(float(x)) < 1e6
+            else (f"{x:.6f}" if pd.notna(x) else "")
+        )
+    print(display_df.to_string(index=False))
+    utils.saveDataFrame(results_df, savefile)
+    print(f"\nResults saved to {savefile}")
