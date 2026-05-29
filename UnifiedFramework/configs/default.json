@@ -1,0 +1,29 @@
+{
+    "preprocessor":   "none",
+    "perception":     "trackpy",
+    "tracker":        "trackpy",
+    "postprocessors": ["interpolate"],
+
+    "diameter":        11,
+    "minmass":        500,
+    "maxsize":        null,
+
+    "search_range":   21,
+    "memory":          3,
+    "adaptive_stop":  0.2,
+    "adaptive_step":  0.95,
+    "min_track_len":  15,
+
+    "fps":             9,
+    "pixel_size":      1.0476,
+
+    "interpolate_max_gap": 15,
+
+    "threshold_method":     "hybrid",
+    "seg_threshold_method": "hybrid",
+    "global_thresh":        50,
+    "morph_kernel_size":    [3, 3],
+    "positive_phase_cutoff": 5.0,
+
+    "visualization":  "flow"
+}
