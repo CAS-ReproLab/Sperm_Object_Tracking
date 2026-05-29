@@ -11,7 +11,7 @@ import utils
 import tkinter as tk
 from tkinter import filedialog
 
-def opticalFlow(frame,data,frame_num,mask,colors,color_dropoff=0.95,mask_cutoff=40):
+def opticalFlow(frame,data,frame_num,mask,colors,color_dropoff=1.00,mask_cutoff=40):
 
     # Slowly fade color mask to create a trail effect
     if color_dropoff < 1.0 and color_dropoff > 0.0:
