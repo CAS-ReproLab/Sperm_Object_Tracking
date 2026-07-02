@@ -1,5 +1,6 @@
 {
     "preprocessor":   "none",
+    "fill_holes":     false,
     "perception":     "trackpy",
     "tracker":        "trackpy",
     "postprocessors": ["interpolate"],

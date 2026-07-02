@@ -2,7 +2,7 @@ from PyQt6.QtCore import QThread, QObject, pyqtSignal
 import traceback
 
 import utils
-from plugins.preprocessors import PREPROCESSORS
+from plugins.preprocessors import PREPROCESSORS, apply_fill_holes
 from plugins.perception import PERCEPTION_METHODS, PRODUCES_SEGMENTATION
 from plugins.trackers import TRACKERS, REQUIRES_SEGMENTATION
 from plugins.postprocessors import POSTPROCESSORS
@@ -29,6 +29,8 @@ class PipelineWorker(QThread):
 
             self.stage_started.emit("preprocessing")
             preprocessed = PREPROCESSORS[config["preprocessor"]](frames, config)
+            if config.get("fill_holes", False):
+                preprocessed = apply_fill_holes(preprocessed, config)
             self.stage_completed.emit("preprocessing", preprocessed)
             if self.stop_after == "preprocessing":
                 return

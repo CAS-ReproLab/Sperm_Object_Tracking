@@ -1,5 +1,6 @@
 import numpy as np
 import cv2 as cv
+from scipy.ndimage import binary_fill_holes as _scipy_fill_holes
 
 
 def _median_filter(frames, config):
@@ -36,6 +37,20 @@ def _positive_phase_filter(frames, config):
 
 def _none(frames, config):
     return frames
+
+
+def apply_fill_holes(frames, config):
+    """
+    Otsu-threshold each frame then fill enclosed dark regions (donut holes → filled discs).
+    Applied as an optional post-preprocessor step; does not depend on which preprocessor ran.
+    Returns a binary uint8 array (values 0 or 255).
+    """
+    result = np.zeros_like(frames)
+    for i in range(len(frames)):
+        _, bw = cv.threshold(frames[i], 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)
+        filled = _scipy_fill_holes(bw > 0).astype(np.uint8) * 255
+        result[i] = filled
+    return result
 
 
 # Registry — keys are what appear in config["preprocessor"] and GUI dropdowns.

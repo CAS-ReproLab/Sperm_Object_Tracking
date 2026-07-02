@@ -80,6 +80,15 @@ class ControlPanel(QWidget):
         self._combo_pre.addItems(list(PREPROCESSORS.keys()))
         self._combo_pre.currentIndexChanged.connect(self._on_preprocessor_changed)
         pre_form.addRow("Method:", self._combo_pre)
+
+        self._chk_fill_holes = QCheckBox("Fill holes (close donuts)")
+        self._chk_fill_holes.setChecked(False)
+        self._chk_fill_holes.setToolTip(
+            "After preprocessing, Otsu-threshold each frame and fill enclosed dark regions.\n"
+            "Converts bright donuts (phase-contrast cells) into filled discs for detection."
+        )
+        pre_form.addRow(self._chk_fill_holes)
+
         self._pre_params_box = QGroupBox()
         self._pre_params_box.setFlat(True)
         self._pre_params_layout = QFormLayout(self._pre_params_box)
@@ -286,6 +295,7 @@ class ControlPanel(QWidget):
         config = {}
 
         config["preprocessor"] = self._combo_pre.currentText()
+        config["fill_holes"]   = self._chk_fill_holes.isChecked()
         config["perception"]   = self._combo_perc.currentText()
         config["tracker"]      = self._combo_trk.currentText()
         config["fps"]          = self._spin_fps.value()
@@ -335,6 +345,8 @@ class ControlPanel(QWidget):
                     combo.setCurrentIndex(idx)
 
         _set_combo(self._combo_pre,  "preprocessor")
+        if "fill_holes" in config:
+            self._chk_fill_holes.setChecked(bool(config["fill_holes"]))
         _set_combo(self._combo_perc, "perception")
         _set_combo(self._combo_trk,  "tracker")
 
