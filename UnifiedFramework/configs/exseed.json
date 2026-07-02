@@ -1,0 +1,23 @@
+{
+    "preprocessor": "median_filter",
+    "fill_holes": true,
+    "perception": "morphology",
+    "tracker": "trackpy",
+    "fps": 9.0,
+    "pixel_size": 1.0476,
+    "postprocessors": [
+        "interpolate"
+    ],
+    "interpolate_max_gap": 15,
+    "seg_threshold_method": "hybrid",
+    "global_thresh": 50,
+    "search_range": 41,
+    "memory": 3,
+    "adaptive_stop": 0.2,
+    "adaptive_step": 0.95,
+    "min_track_len": 15,
+    "morph_kernel_size": [
+        7,
+        7
+    ]
+}
