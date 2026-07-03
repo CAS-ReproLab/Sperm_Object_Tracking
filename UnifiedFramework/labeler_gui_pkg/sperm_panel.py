@@ -3,7 +3,7 @@ from PyQt6.QtWidgets import (
     QTableWidget, QTableWidgetItem, QComboBox, QAbstractItemView,
     QHeaderView,
 )
-from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import Qt, pyqtSignal, QItemSelectionModel
 
 
 class SpermPanel(QWidget):
@@ -143,10 +143,13 @@ class SpermPanel(QWidget):
     def _select_ids_internal(self, ids):
         self._suppress_signal = True
         self._table.clearSelection()
+        selection_model = self._table.selectionModel()
+        flags = QItemSelectionModel.SelectionFlag.Select | QItemSelectionModel.SelectionFlag.Rows
         for sid in ids:
             row = self._row_by_id.get(sid)
             if row is not None:
-                self._table.selectRow(row)
+                index = self._table.model().index(row, 0)
+                selection_model.select(index, flags)
         self._suppress_signal = False
 
     def _on_selection_changed(self):

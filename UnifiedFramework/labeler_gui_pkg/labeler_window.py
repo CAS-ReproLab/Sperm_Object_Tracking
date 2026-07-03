@@ -3,7 +3,7 @@ import pandas as pd
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QSplitter, QVBoxLayout, QHBoxLayout,
     QPushButton, QLabel, QStatusBar, QMessageBox, QDialog, QDialogButtonBox,
-    QListWidget, QListWidgetItem, QLineEdit, QCheckBox, QFileDialog,
+    QListWidget, QListWidgetItem, QLineEdit, QCheckBox, QFileDialog, QTabWidget,
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QAction, QKeySequence, QShortcut
@@ -11,6 +11,7 @@ from PyQt6.QtGui import QAction, QKeySequence, QShortcut
 import utils
 from labeler_gui_pkg.labeler_video_panel import LabelerVideoPanel
 from labeler_gui_pkg.sperm_panel import SpermPanel
+from labeler_gui_pkg.filter_panel import FilterPanel
 from labeler_gui_pkg.labels_config import load_labels, save_labels, DEFAULT_LABELS_PATH
 
 _UNDO_LIMIT = 25
@@ -164,8 +165,11 @@ class LabelerWindow(QMainWindow):
         self._video_panel = LabelerVideoPanel()
         splitter.addWidget(self._video_panel)
 
-        right = QWidget()
-        right_layout = QVBoxLayout(right)
+        right_tabs = QTabWidget()
+
+        # ── "Tracks" tab ──────────────────────────────────────────────────────
+        tracks_tab = QWidget()
+        right_layout = QVBoxLayout(tracks_tab)
         right_layout.setContentsMargins(4, 4, 4, 4)
 
         self._sperm_panel = SpermPanel(self._labels)
@@ -175,6 +179,14 @@ class LabelerWindow(QMainWindow):
         self._selection_status.setWordWrap(True)
         self._selection_status.setStyleSheet("color: #888; font-style: italic;")
         right_layout.addWidget(self._selection_status)
+
+        self._chk_isolate_selected = QCheckBox("Isolate Selected Tracks")
+        self._chk_isolate_selected.setToolTip(
+            "Only show the currently selected sperm in the video. "
+            "Click cells or table rows (Ctrl+Click to add more) to change the selection."
+        )
+        self._chk_isolate_selected.toggled.connect(self._on_isolate_selected_toggled)
+        right_layout.addWidget(self._chk_isolate_selected)
 
         action_row = QHBoxLayout()
         self._btn_merge  = QPushButton("Merge Selected")
@@ -211,7 +223,15 @@ class LabelerWindow(QMainWindow):
         action_row.addWidget(self._btn_delete)
         right_layout.addLayout(action_row)
 
-        splitter.addWidget(right)
+        right_tabs.addTab(tracks_tab, "Tracks")
+
+        # ── "Filters" tab ─────────────────────────────────────────────────────
+        self._filter_panel = FilterPanel()
+        self._filter_panel.isolate_requested.connect(self._on_filter_isolate_requested)
+        self._filter_panel.event_selected.connect(self._on_filter_event_selected)
+        right_tabs.addTab(self._filter_panel, "Filters")
+
+        splitter.addWidget(right_tabs)
         splitter.setStretchFactor(0, 3)
         splitter.setStretchFactor(1, 2)
 
@@ -308,6 +328,7 @@ class LabelerWindow(QMainWindow):
         self._tracks = tracks
         self._video_panel.set_tracks(self._tracks)
         self._sperm_panel.set_tracks(self._tracks)
+        self._filter_panel.set_tracks(self._tracks)
         if push_undo:
             self._mark_dirty()
 
@@ -351,6 +372,8 @@ class LabelerWindow(QMainWindow):
         self._btn_swap.setEnabled(len(ids) == 2)
         self._btn_delete.setEnabled(len(ids) >= 1)
         self._update_selection_status(ids)
+        if self._chk_isolate_selected.isChecked():
+            self._video_panel.set_visible_ids(ids)
 
     def _update_selection_status(self, ids):
         if len(ids) == 0:
@@ -365,6 +388,37 @@ class LabelerWindow(QMainWindow):
         else:
             text = f"{len(ids)} selected. Merge and Swap need exactly 2; Split needs exactly 1."
         self._selection_status.setText(text)
+
+    # ── track filtering ───────────────────────────────────────────────────────
+
+    def _on_isolate_selected_toggled(self, checked):
+        if checked:
+            # Mutually exclusive with the Filters tab's isolate — most recent wins.
+            self._filter_panel.set_isolate_checked(False)
+        ids = self._sperm_panel.selected_ids()
+        self._video_panel.set_visible_ids(ids if checked else None)
+        self._status.showMessage(
+            f"Isolating {len(ids)} selected track(s)." if checked else "Showing all tracks."
+        )
+
+    def _on_filter_isolate_requested(self, ids):
+        if ids is not None:
+            self._chk_isolate_selected.blockSignals(True)
+            self._chk_isolate_selected.setChecked(False)
+            self._chk_isolate_selected.blockSignals(False)
+            self._status.showMessage(f"Isolating {len(ids)} filtered track(s).")
+        else:
+            self._status.showMessage("Showing all tracks.")
+        self._video_panel.set_visible_ids(ids)
+
+    def _on_filter_event_selected(self, frame, sperm_ids):
+        self._video_panel.goto_frame(frame)
+        self._sperm_panel.select_ids(sperm_ids)
+        self._video_panel.set_selected_ids(sperm_ids)
+        self._update_action_buttons(sperm_ids)
+        self._status.showMessage(
+            f"Jumped to frame {frame}, selected sperm {', '.join(str(i) for i in sperm_ids)}."
+        )
 
     # ── label editing ─────────────────────────────────────────────────────────
 
@@ -485,6 +539,7 @@ class LabelerWindow(QMainWindow):
     def _refresh_after_edit(self):
         self._video_panel.set_tracks(self._tracks)
         self._sperm_panel.set_tracks(self._tracks)
+        self._filter_panel.set_tracks(self._tracks)
         self._video_panel.set_selected_ids([])
 
     # ── new track placement ──────────────────────────────────────────────────
@@ -534,6 +589,7 @@ class LabelerWindow(QMainWindow):
         self._tracks = self._undo_stack.pop()
         self._video_panel.set_tracks(self._tracks)
         self._sperm_panel.set_tracks(self._tracks)
+        self._filter_panel.set_tracks(self._tracks)
         self._video_panel.set_selected_ids([])
         self._act_undo.setEnabled(bool(self._undo_stack))
         self._mark_dirty()

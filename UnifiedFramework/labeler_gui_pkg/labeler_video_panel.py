@@ -38,6 +38,7 @@ class LabelerVideoPanel(QWidget):
         self._trail_length     = 60
 
         self._selected_ids      = []   # sperm IDs currently highlighted (synced with table)
+        self._visible_ids       = None  # None = show all tracks; else only these sperm IDs
         self._placement_mode    = False
         self._placement_pts     = []   # list of (frame, x, y) collected during placement
 
@@ -155,6 +156,18 @@ class LabelerVideoPanel(QWidget):
         """Called externally (e.g. by the sperm table) to sync highlight state."""
         self._selected_ids = list(ids)
         self._render()
+
+    def set_visible_ids(self, ids):
+        """
+        Restrict which tracks are drawn. Pass None to show all tracks again,
+        or an iterable of sperm IDs to show only those (all others hidden).
+        """
+        self._visible_ids = set(int(i) for i in ids) if ids is not None else None
+        self._render()
+
+    @property
+    def visible_ids(self):
+        return self._visible_ids
 
     @property
     def current_frame(self):
@@ -317,6 +330,8 @@ class LabelerVideoPanel(QWidget):
 
         # Track trails, most recent `trail_length` frames
         sperm_ids = t["sperm"].unique()
+        if self._visible_ids is not None:
+            sperm_ids = [s for s in sperm_ids if int(s) in self._visible_ids]
         for sperm_id in sperm_ids:
             sid = int(sperm_id)
             seg = t[
