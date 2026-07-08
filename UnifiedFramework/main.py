@@ -69,8 +69,8 @@ if __name__ == '__main__':
     f = determineCentroids(frames,int(config["diameter"]),int(config["minmass"]))
 
     # Track the centroids
-    #t = trackCentroids(f,int(config["search_range"]),int(config["memory"]))
-    t = trackCentroids_forecaster(f)
+    t = trackCentroids(f,int(config["search_range"]),int(config["memory"]))
+    #t = trackCentroids_forecaster(f)
 
     # Segment the cells
     if config["compute_segs"]=="true":
