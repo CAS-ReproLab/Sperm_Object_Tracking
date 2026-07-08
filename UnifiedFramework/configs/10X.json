@@ -7,5 +7,21 @@
     "pixel_size": 1.0476,
     "median_filter": "false",
     "compute_segs": "false",
-    "visualization": "flow"
+    "visualization": "flow",
+
+    "ultrack_min_area": 7,
+    "ultrack_max_area": 500,
+    "ultrack_division_weight": -1000.0,
+    "ultrack_threshold_method": "hybrid",
+    "ultrack_morph_open_size": 3,
+
+    "ultrack_max_neighbors": 25,
+
+    "ultrack_search_range": 35,
+    "ultrack_distance_weight": 0.5,
+
+    "ultrack_power": 1,
+    "ultrack_appear_weight": -50.0,
+    "ultrack_disappear_weight": -50.0,
+    "ultrack_image_border_size": [50, 50]
 }
