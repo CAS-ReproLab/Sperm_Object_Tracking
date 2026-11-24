@@ -1,0 +1,27 @@
+# Exact versions this pipeline was developed and run against (Python 3.12,
+# Windows, CUDA 13.0). Newer versions will very likely work too, but these
+# are the known-good pins.
+#
+# IMPORTANT (Windows + conda users): installing any of these via
+# `conda install` alongside a pip-installed PyTorch/CUDA stack has been
+# observed to silently replace pip-installed numpy/scipy/pandas/opencv with
+# conda-forge builds that are ABI-incompatible with that PyTorch build,
+# breaking multi-worker DataLoader training. Install everything below via
+# pip into a conda env whose Python interpreter you created with conda
+# (`conda create -n sperm-engine python=3.12`), rather than `conda install`.
+torch==2.11.0+cu130
+--extra-index-url https://download.pytorch.org/whl/cu130
+ultralytics==8.4.115
+opencv-python==4.13.0.92
+numpy==2.4.3
+pandas==3.0.2
+scipy==1.17.1
+scikit-learn==1.8.0
+shapely==2.1.2
+matplotlib==3.11.2
+trackpy==0.7
+tifffile==2026.8.16
+tqdm==4.67.3
+psutil==7.0.0
+PyYAML==6.0.3
+PyQt6==6.11.0

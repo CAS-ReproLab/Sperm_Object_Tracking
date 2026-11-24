@@ -1,0 +1,270 @@
+# Data-engine clip registry. Generated/edited via
+# data_engine/registry/registry.py -- avoid hand-editing where possible.
+- clip_id: RL_1
+  path: data/RL_1
+  source_type: real
+  density_tier: low
+  split: train
+  label_status: human
+  bootstrap_model_id: null
+  added_in_iteration: 0
+  notes: re-registered 2026-09 density-tier reorg (was density_tier='unknown')
+  source_video: data/RL_1/video_P001.mp4
+  ground_truth_csv: data/RL_1/video_P001_corrected_trackpy_format.csv
+  measured_density: 48.1
+- clip_id: RL_2
+  path: data/RL_2
+  source_type: real
+  density_tier: low
+  split: train
+  label_status: human
+  bootstrap_model_id: null
+  added_in_iteration: 0
+  notes: re-registered 2026-09 density-tier reorg (was density_tier='unknown')
+  source_video: data/RL_2/video_P002.mp4
+  ground_truth_csv: data/RL_2/video_P002_corrected_trackpy_format.csv
+  measured_density: 26.2
+- clip_id: RL_3
+  path: data/RL_3
+  source_type: real
+  density_tier: low
+  split: train
+  label_status: human
+  bootstrap_model_id: null
+  added_in_iteration: 0
+  notes: re-registered 2026-09 density-tier reorg (previously registered as RL_3_C,
+    pointing at the archived data/RL_3_C folder, with ground_truth_csv=null)
+  source_video: data/RL_3/video_P003.mp4
+  ground_truth_csv: data/RL_3/video_P003_corrected_trackpy_format_corrected.csv
+  measured_density: 50.9
+- clip_id: RL_4
+  path: data/RL_4
+  source_type: real
+  density_tier: low
+  split: train
+  label_status: human
+  bootstrap_model_id: null
+  added_in_iteration: 0
+  notes: re-registered 2026-09 density-tier reorg (was density_tier='unknown')
+  source_video: data/RL_4/video_P004.mp4
+  ground_truth_csv: data/RL_4/video_P004_corrected_trackpy_format.csv
+  measured_density: 17.4
+- clip_id: RL_5
+  path: data/RL_5
+  source_type: real
+  density_tier: low
+  split: val
+  label_status: human
+  bootstrap_model_id: null
+  added_in_iteration: 0
+  notes: re-registered 2026-09 density-tier reorg (was density_tier='unknown')
+  source_video: data/RL_5/video_P005.mp4
+  ground_truth_csv: data/RL_5/video_P005_corrected_trackpy_format.csv
+  measured_density: 76.8
+- clip_id: synthetic_160_20260921-112215
+  path: data_engine/data/synthetic_160_20260921-112215
+  source_type: synthetic
+  density_tier: '160'
+  split: train
+  label_status: human
+  bootstrap_model_id: null
+  added_in_iteration: 0
+  notes: ingested from video.mp4 + trajectories_trackpy_format.csv
+  source_video: data_engine/data/synthetic_160_20260921-112215/synthetic_160_20260921-112215.mp4
+  ground_truth_csv: data_engine/data/synthetic_160_20260921-112215/synthetic_160_20260921-112215_trackpy_format.csv
+  measured_density: null
+- clip_id: synthetic_160_20260921-112223
+  path: data_engine/data/synthetic_160_20260921-112223
+  source_type: synthetic
+  density_tier: '160'
+  split: val
+  label_status: human
+  bootstrap_model_id: null
+  added_in_iteration: 0
+  notes: ingested from video.mp4 + trajectories_trackpy_format.csv
+  source_video: data_engine/data/synthetic_160_20260921-112223/synthetic_160_20260921-112223.mp4
+  ground_truth_csv: data_engine/data/synthetic_160_20260921-112223/synthetic_160_20260921-112223_trackpy_format.csv
+  measured_density: null
+- clip_id: synthetic_160_20260921-112234
+  path: data_engine/data/synthetic_160_20260921-112234
+  source_type: synthetic
+  density_tier: '160'
+  split: train
+  label_status: human
+  bootstrap_model_id: null
+  added_in_iteration: 0
+  notes: ingested from video.mp4 + trajectories_trackpy_format.csv
+  source_video: data_engine/data/synthetic_160_20260921-112234/synthetic_160_20260921-112234.mp4
+  ground_truth_csv: data_engine/data/synthetic_160_20260921-112234/synthetic_160_20260921-112234_trackpy_format.csv
+  measured_density: null
+- clip_id: augmented_medium_20260921-112259
+  path: data_engine/data/augmented_medium_20260921-112259
+  source_type: augmented
+  density_tier: medium
+  split: train
+  label_status: human
+  bootstrap_model_id: null
+  added_in_iteration: 0
+  notes: ingested from video.mp4 + trajectories_trackpy_format.csv
+  source_video: data_engine/data/augmented_medium_20260921-112259/augmented_medium_20260921-112259.mp4
+  ground_truth_csv: data_engine/data/augmented_medium_20260921-112259/augmented_medium_20260921-112259_trackpy_format.csv
+  measured_density: 99.1
+- clip_id: augmented_medium_20260921-112418
+  path: data_engine/data/augmented_medium_20260921-112418
+  source_type: augmented
+  density_tier: medium
+  split: val
+  label_status: human
+  bootstrap_model_id: null
+  added_in_iteration: 0
+  notes: ingested from video.mp4 + trajectories_trackpy_format.csv
+  source_video: data_engine/data/augmented_medium_20260921-112418/augmented_medium_20260921-112418.mp4
+  ground_truth_csv: data_engine/data/augmented_medium_20260921-112418/augmented_medium_20260921-112418_trackpy_format.csv
+  measured_density: 87.2
+- clip_id: synthetic_160_20260928-112326
+  path: data_engine/data/synthetic_160_20260928-112326
+  source_type: synthetic
+  density_tier: '160'
+  split: train
+  label_status: human
+  bootstrap_model_id: null
+  added_in_iteration: 0
+  notes: ingested from video.mp4 + trajectories_trackpy_format.csv
+  source_video: data_engine/data/synthetic_160_20260928-112326/synthetic_160_20260928-112326.mp4
+  ground_truth_csv: data_engine/data/synthetic_160_20260928-112326/synthetic_160_20260928-112326_trackpy_format.csv
+  measured_density: null
+- clip_id: synthetic_160_20260928-112336
+  path: data_engine/data/synthetic_160_20260928-112336
+  source_type: synthetic
+  density_tier: '160'
+  split: val
+  label_status: human
+  bootstrap_model_id: null
+  added_in_iteration: 0
+  notes: ingested from video.mp4 + trajectories_trackpy_format.csv
+  source_video: data_engine/data/synthetic_160_20260928-112336/synthetic_160_20260928-112336.mp4
+  ground_truth_csv: data_engine/data/synthetic_160_20260928-112336/synthetic_160_20260928-112336_trackpy_format.csv
+  measured_density: null
+- clip_id: augmented_medium_20260928-112548
+  path: data_engine/data/augmented_medium_20260928-112548
+  source_type: augmented
+  density_tier: medium
+  split: train
+  label_status: human
+  bootstrap_model_id: null
+  added_in_iteration: 0
+  notes: ingested from video.mp4 + trajectories_trackpy_format.csv
+  source_video: data_engine/data/augmented_medium_20260928-112548/augmented_medium_20260928-112548.mp4
+  ground_truth_csv: data_engine/data/augmented_medium_20260928-112548/augmented_medium_20260928-112548_trackpy_format.csv
+  measured_density: 148.5
+- clip_id: augmented_medium_20260928-112630
+  path: data_engine/data/augmented_medium_20260928-112630
+  source_type: augmented
+  density_tier: medium
+  split: train
+  label_status: human
+  bootstrap_model_id: null
+  added_in_iteration: 0
+  notes: ingested from video.mp4 + trajectories_trackpy_format.csv
+  source_video: data_engine/data/augmented_medium_20260928-112630/augmented_medium_20260928-112630.mp4
+  ground_truth_csv: data_engine/data/augmented_medium_20260928-112630/augmented_medium_20260928-112630_trackpy_format.csv
+  measured_density: 136.8
+- clip_id: augmented_medium_20260928-144209
+  path: data_engine/data/augmented_medium_20260928-144209
+  source_type: augmented
+  density_tier: medium
+  split: val
+  label_status: human
+  bootstrap_model_id: null
+  added_in_iteration: 0
+  notes: ingested from video.mp4 + trajectories_trackpy_format.csv
+  source_video: data_engine/data/augmented_medium_20260928-144209/augmented_medium_20260928-144209.mp4
+  ground_truth_csv: data_engine/data/augmented_medium_20260928-144209/augmented_medium_20260928-144209_trackpy_format.csv
+  measured_density: 91.7
+- clip_id: real_medium_20261001-114937
+  path: data_engine/data/real_medium_20261001-114937
+  source_type: real
+  density_tier: medium
+  split: train
+  label_status: human
+  bootstrap_model_id: null
+  added_in_iteration: 0
+  notes: ingested from 10X Ph- 9Fps Wash 1 4 P021sh R3.mp4 + 10X Ph- 9Fps Wash 1 4
+    P021sh R3_bootstrap_corrected.csv
+  source_video: data_engine/data/real_medium_20261001-114937/real_medium_20261001-114937.mp4
+  ground_truth_csv: data_engine/data/real_medium_20261001-114937/real_medium_20261001-114937_trackpy_format.csv
+  measured_density: 201.7
+- clip_id: real_medium_20261008-112644
+  path: data_engine/data/real_medium_20261008-112644
+  source_type: real
+  density_tier: medium
+  split: train
+  label_status: human
+  bootstrap_model_id: null
+  added_in_iteration: 0
+  notes: ingested from 10X Ph- 9Fps Wash 1 8 P018cu R3.mp4 + 10X Ph- 9Fps Wash 1 8
+    P018cu R3_bootstrap_corrected.csv
+  source_video: data_engine/data/real_medium_20261008-112644/real_medium_20261008-112644.mp4
+  ground_truth_csv: data_engine/data/real_medium_20261008-112644/real_medium_20261008-112644_trackpy_format.csv
+  measured_density: 126.2
+- clip_id: real_medium_20261008-112703
+  path: data_engine/data/real_medium_20261008-112703
+  source_type: real
+  density_tier: medium
+  split: val
+  label_status: human
+  bootstrap_model_id: null
+  added_in_iteration: 0
+  notes: ingested from 10X Ph- 9Fps Wash Dil 1 8 P016an R1.mp4 + 10X Ph- 9Fps Wash
+    Dil 1 8 P016an R1_bootstrap_corrected.csv
+  source_video: data_engine/data/real_medium_20261008-112703/real_medium_20261008-112703.mp4
+  ground_truth_csv: data_engine/data/real_medium_20261008-112703/real_medium_20261008-112703_trackpy_format.csv
+  measured_density: 168.4
+- clip_id: augmented_high_20261008-113434
+  path: data_engine/data/augmented_high_20261008-113434
+  source_type: augmented
+  density_tier: high
+  split: train
+  label_status: human
+  bootstrap_model_id: null
+  added_in_iteration: 0
+  notes: ingested from video.mp4 + trajectories_trackpy_format.csv
+  source_video: data_engine/data/augmented_high_20261008-113434/augmented_high_20261008-113434.mp4
+  ground_truth_csv: data_engine/data/augmented_high_20261008-113434/augmented_high_20261008-113434_trackpy_format.csv
+  measured_density: 327.9
+- clip_id: augmented_high_20261008-113503
+  path: data_engine/data/augmented_high_20261008-113503
+  source_type: augmented
+  density_tier: high
+  split: val
+  label_status: human
+  bootstrap_model_id: null
+  added_in_iteration: 0
+  notes: ingested from video.mp4 + trajectories_trackpy_format.csv
+  source_video: data_engine/data/augmented_high_20261008-113503/augmented_high_20261008-113503.mp4
+  ground_truth_csv: data_engine/data/augmented_high_20261008-113503/augmented_high_20261008-113503_trackpy_format.csv
+  measured_density: 490.5
+- clip_id: synthetic_320_20261012-165154
+  path: data_engine/data/synthetic_320_20261012-165154
+  source_type: synthetic
+  density_tier: '320'
+  split: train
+  label_status: human
+  bootstrap_model_id: null
+  added_in_iteration: 0
+  notes: ingested from video.mp4 + trajectories_trackpy_format.csv
+  source_video: data_engine/data/synthetic_320_20261012-165154/synthetic_320_20261012-165154.mp4
+  ground_truth_csv: data_engine/data/synthetic_320_20261012-165154/synthetic_320_20261012-165154_trackpy_format.csv
+  measured_density: null
+- clip_id: synthetic_320_20261012-165228
+  path: data_engine/data/synthetic_320_20261012-165228
+  source_type: synthetic
+  density_tier: '320'
+  split: val
+  label_status: human
+  bootstrap_model_id: null
+  added_in_iteration: 0
+  notes: ingested from video.mp4 + trajectories_trackpy_format.csv
+  source_video: data_engine/data/synthetic_320_20261012-165228/synthetic_320_20261012-165228.mp4
+  ground_truth_csv: data_engine/data/synthetic_320_20261012-165228/synthetic_320_20261012-165228_trackpy_format.csv
+  measured_density: null

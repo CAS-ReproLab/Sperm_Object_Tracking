@@ -1,0 +1,15 @@
+# Creates a conda environment with the right Python interpreter, then
+# installs everything else via pip (see requirements.txt). Mixing
+# `conda install` for the scientific-Python stack with a pip-installed
+# PyTorch/CUDA build has been observed to silently break things on Windows
+# (ABI-incompatible numpy/scipy/opencv rebuilds) -- pip-only is deliberate.
+#
+#   conda env create -f environment.yml
+#   conda activate sperm-engine
+#   pip install -r requirements.txt
+name: sperm-engine
+channels:
+  - defaults
+dependencies:
+  - python=3.12
+  - pip
