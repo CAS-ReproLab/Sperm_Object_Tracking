@@ -16,6 +16,8 @@ and is licensed under that repository's GPL-3.0 license (see its root
 > videos**
 > Coming soon — full author list and bioRxiv DOI to follow shortly.
 
+![Data Engine Overview](docs/screenshots/Overview.png)
+
 ## Contents
 
 - [What's in this repo](#whats-in-this-repo)
@@ -111,13 +113,21 @@ data_engine/
 run_loop.py           chains train -> evaluate in one command
 ```
 
-Every stage is runnable standalone from the command line; the GUI hub
-(`python -m data_engine.gui.hub`) is a convenience layer over the same
-functions, not a separate implementation.
+## Running the GUI
 
-## Running the pipeline
+Every stage of the pipeline is from the built into the GUI and is the simplest way to get started with the program.
 
-Run every command below as a module, from inside this `Sperm_Data_Engine/`
+```bash
+python -m data_engine.gui.hub
+```
+
+![Prepare Data tab](docs/screenshots/DataEngineGUI.png)
+
+The tabs are in order from left to right for the stages of the pipeline (Label / Prepare Data / Train / Evaluate).
+
+## Running the pipeline (and CLI commands)
+
+If desired, each stage can be ran separately from the terminal/command line. Run every command below as a module, from inside this `Sperm_Data_Engine/`
 folder (not from inside `data_engine/` itself) — e.g.
 `python -m data_engine.stages.train.train ...`.
 
@@ -135,6 +145,12 @@ much faster than labeling from nothing):
 python -m data_engine.stages.label.bootstrap_label --video path/to/video.mp4
 python -m data_engine.stages.label.bootstrap_label --video path/to/video.mp4 --model best.pt --tracker bytetrack
 ```
+
+The labeler program is where a human
+reviews/corrects trajectories. It provides playback with motion trails, click-to-select,
+merge/split/swap, a crossover finder, and birth-event filters.
+
+![Sperm Track Labeler](docs/screenshots/Labeler.png)
 
 Both register the corrected result into the clip registry automatically.
 
@@ -185,30 +201,6 @@ python -m data_engine.stages.validate.evaluate --tracker trackpy   # score the T
 Produces per-clip metric CSVs and a density-tier summary (mean metrics per
 density bin, plus an aggregate "all clips" row), with both unfiltered and
 stationary-sperm-filtered variants side by side.
-
-### GUI hub
-
-```bash
-python -m data_engine.gui.hub
-```
-
-One window, four tabs (Label / Prepare Data / Train / Evaluate), each a
-form-based wrapper over the exact same functions the CLI commands above
-call — nothing the GUI does is unavailable from the command line, and vice
-versa.
-
-**Prepare Data tab** — the registry coverage dashboard (clips by source type
-× density tier) plus the ingest/synthesize/combine-and-augment forms:
-
-![Prepare Data tab](docs/screenshots/DataEngineGUI.png)
-
-**The labeler** — opened from the Label tab (either on an empty track set
-or pre-loaded with tracker predictions to correct), this is where a human
-reviews/corrects trajectories: playback with motion trails, click-to-select,
-merge/split/swap, a crossover finder, and the birth-event filter described
-above:
-
-![Sperm Track Labeler](docs/screenshots/Labeler.png)
 
 ## Analysis tools
 
