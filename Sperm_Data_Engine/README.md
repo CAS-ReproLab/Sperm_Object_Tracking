@@ -16,7 +16,7 @@ and is licensed under that repository's GPL-3.0 license (see its root
 > videos**
 > Coming soon — full author list and bioRxiv DOI to follow shortly.
 
-![Data Engine Overview](docs/screenshots/Overview.png)
+![Data Engine Overview](docs/screenshots/overview.png)
 
 ## Contents
 
@@ -125,7 +125,7 @@ python -m data_engine.gui.hub
 
 The tabs are in order from left to right for the stages of the pipeline (Label / Prepare Data / Train / Evaluate).
 
-## Running the pipeline (and CLI commands)
+## Running the pipeline with CLI commands
 
 If desired, each stage can be ran separately from the terminal/command line. Run every command below as a module, from inside this `Sperm_Data_Engine/`
 folder (not from inside `data_engine/` itself) — e.g.
